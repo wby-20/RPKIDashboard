@@ -1,16 +1,22 @@
-# 收集器地图资源说明
+# 收集器地图资源
 
-## 文件位置
+## 来源
 
-- 原始文件：`data/maps/world.geo.json`
-- 前端运行时文件：`public/maps/world-countries.geojson`
-- 生成脚本：`scripts/prepare-world-map.mjs`
+底图来自 **Natural Earth Admin 0 – Countries (China POV), version 5.1.1**，比例尺为 1:10m。China POV 是 Natural Earth 提供的 point-of-view 变体，用于表达中国法定及本地惯例下的行政边界视角。
 
-原始文件不能放在 `dist/assets`：`dist` 是 Vite 构建输出，执行 `npm run build` 时会被清理。运行时文件放在 `public/maps`，仅进入收集器专题页后由浏览器按需加载，不会进入主 JavaScript bundle。
+- 数据集：https://www.naturalearthdata.com/blog/admin-0-countries-point-of-views/
+- POV 说明：https://www.naturalearthdata.com/about/disputed-boundaries-policy/
+- 使用条款：https://www.naturalearthdata.com/about/terms-of-use/
 
-## 体积与简化
+Natural Earth 声明其矢量和栅格数据属于 public domain，不强制署名。项目保留推荐署名：**Made with Natural Earth**。
 
-用户提供的原始 GeoJSON 包含 246 个国家/地区要素、73,328 个坐标点，大小约 1.40 MB。生成脚本采用 0.08° Douglas–Peucker 几何简化并保留所有要素和小型 polygon ring，输出约 482 KB、27,075 个坐标点；本次 gzip 测得约 168 KB。
+## 文件
+
+- `data/maps/world.geo.json`：原始 GeoJSON，约 1.4 MB，246 个国家/地区要素、73,328 个坐标点。
+- `public/maps/world-countries.geojson`：前端运行版本，约 493 KB、27,075 个坐标点，gzip 后约 168 KB。
+- `scripts/prepare-world-map.mjs`：地图简化脚本。
+
+原始文件不能放在 `dist/`，因为 Vite 构建会清理该目录。运行版本位于 `public/maps/`，仅在打开公共收集器页面时加载。
 
 重新生成：
 
@@ -18,12 +24,11 @@
 npm run map:prepare
 ```
 
-## 来源与使用边界
+## 地图口径
 
-原始文件没有包含来源、版本或许可元数据。其结构类似常见的 Natural Earth 派生世界边界数据，但在来源确认前，项目不能把它表述为 Natural Earth 或其他机构的官方数据。它只作为非指标性的背景底图，不参与任何统计。
-
-- RouteViews 圆点使用官方 collector API 返回的 `lat/lng`。
-- RIPE RIS `rrc-info` 只提供城市名称，没有可靠的精确坐标；地图使用官方 `geographical_location` 对应的城市中心近似坐标，并显式标记为近似值。
-- 地图点表示 collector 基础设施位置，不代表 peer、路由起源或观测覆盖范围；Multihop collector 尤其不能按所在城市解释其观测范围。
+- RouteViews 节点使用官方 collector API 返回的经纬度。
+- RIPE RIS 使用官方城市名称对应的城市中心近似坐标，不表示机房精确位置。
+- 地图点表示 collector 基础设施位置，不表示 peer、路由起源或观测覆盖范围。
+- 同址 collector 聚合为一个带数量的圆点。
 
 原始文件 SHA-256：`604ca4ac9993c38932d72bc69a309402e0f71afce0b2df4e6f728361c32ee93f`。

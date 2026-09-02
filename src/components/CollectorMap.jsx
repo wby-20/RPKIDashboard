@@ -118,7 +118,7 @@ export default function CollectorMap({ collectors, platform, status, language })
       <aside className="collector-map-detail"><CollectorDetail cluster={selectedCluster} platform={platform} language={language} compact={compact} formatDate={formatDate} /></aside>
     </div>
     <div className="collector-map-note"><Info size={14} /><span>{platform === 'routeviews'
-      ? (language === 'zh' ? '圆点坐标来自 RouteViews collector API。FIB 前缀数是该 collector 最新统计中的路由表规模，不是 Announcement 事件数，也不能跨 collector 求和。' : 'Coordinates come from the RouteViews collector API. FIB prefix counts are per-collector table sizes, not announcement-event counts, and must not be summed across collectors.')
-      : (language === 'zh' ? '位置名称来自 RIPE RIS 官方清单；圆点使用城市中心近似坐标，不代表机房精确位置或 peer 覆盖范围。每 peer 前缀数来自同一 RIB 快照的中位数。' : 'Location names come from the official RIPE RIS inventory; points use approximate city centroids, not exact facilities or peer coverage. Per-peer prefix values are medians from one RIB snapshot.')}</span></div>
+      ? (language === 'zh' ? '圆点坐标来自 RouteViews collector API。FIB 前缀数是该 collector 最新统计中的路由表规模，不是 Announcement 事件数，也不能跨 collector 求和。底图：Natural Earth 5.1.1 China POV。' : 'Coordinates come from the RouteViews collector API. FIB prefix counts are per-collector table sizes, not announcement-event counts, and must not be summed across collectors. Basemap: Natural Earth 5.1.1 China POV.')
+      : (language === 'zh' ? '位置名称来自 RIPE RIS 官方清单；圆点使用城市中心近似坐标，不代表机房精确位置或 peer 覆盖范围。每 peer 前缀数来自同一 RIB 快照的中位数。底图：Natural Earth 5.1.1 China POV。' : 'Location names come from the official RIPE RIS inventory; points use approximate city centroids, not exact facilities or peer coverage. Per-peer prefix values are medians from one RIB snapshot. Basemap: Natural Earth 5.1.1 China POV.')}</span></div>
   </article>;
 }
