@@ -117,6 +117,6 @@ src/       React 页面和生成数据
 
 ## License
 
-项目代码使用 [MIT License](LICENSE)。
-
-Natural Earth 地图数据属于 public domain，推荐署名 “Made with Natural Earth”。第三方数据说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- Code: [MIT](LICENSE)
+- Basemap: Natural Earth 5.1.1 China POV, public domain
+- Third-party data: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)

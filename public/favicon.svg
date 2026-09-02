@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RPKI Global Observatory">
+  <rect width="64" height="64" rx="7" fill="#142131"/>
+  <path d="M32 8 50 15v14c0 12-7.2 21.4-18 27-10.8-5.6-18-15-18-27V15Z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+  <path d="m21 27 10-6 12 7-11 12-11-6Z" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="21" cy="27" r="3.3" fill="#fff"/>
+  <circle cx="31" cy="21" r="3.3" fill="#fff"/>
+  <circle cx="43" cy="28" r="3.3" fill="#fff"/>
+  <circle cx="32" cy="40" r="3.3" fill="#38bdf8"/>
+</svg>

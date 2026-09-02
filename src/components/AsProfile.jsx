@@ -132,6 +132,20 @@ function AsTooltip({ active, payload, label }) {
   return <div className="chart-tooltip"><div className="tooltip-label">{label}</div>{payload.map((item) => <div className="tooltip-row" key={item.dataKey}><span className="tooltip-key"><i style={{ background: item.color }} />{item.name}</span><strong>{formatNumber(item.value)}</strong></div>)}</div>;
 }
 
+function ExternalAsLinks({ asn, language }) {
+  if (!asn) return null;
+  const links = [
+    ['RIPEstat', `https://stat.ripe.net/AS${asn}`],
+    ['CAIDA AS Rank', `https://asrank.caida.org/asns/${asn}`],
+    ['PeeringDB', `https://www.peeringdb.com/asn/${asn}`],
+    ['RouteViews API', `https://api.routeviews.org/asn/${asn}`],
+    ['Cloudflare Radar', `https://radar.cloudflare.com/routing/as${asn}`],
+    ['BGP.tools', `https://bgp.tools/as/${asn}`],
+    ['HE BGP Toolkit', `https://bgp.he.net/AS${asn}`],
+  ];
+  return <nav className="as-external-links" aria-label={language === 'zh' ? `AS${asn} 外部数据源` : `External data sources for AS${asn}`}><span>{language === 'zh' ? `外部查询 · AS${asn}` : `External lookups · AS${asn}`}</span><div>{links.map(([label, href]) => <a key={label} href={href} target="_blank" rel="noreferrer">{label}<ArrowUpRight size={12} /></a>)}</div></nav>;
+}
+
 export default function AsProfile({ language }) {
   const [queryMode, setQueryMode] = useState('asn');
   const [query, setQuery] = useState('13335');
@@ -413,6 +427,8 @@ export default function AsProfile({ language }) {
       <p><Info size={13} />{queryMode === 'asn' ? (STATIC_ONLY ? (language === 'zh' ? 'GitHub Pages 模式：watchlist 含完整 CAIDA 数据，任意 ASN 提供 RIPEstat 数据。' : 'GitHub Pages mode: full CAIDA data for watchlist ASNs and RIPEstat data for arbitrary ASNs.') : (language === 'zh' ? 'Watchlist 定时预取；任意 ASN 查询在当前浏览器缓存 8 小时。' : 'Watchlist ASNs are pre-fetched; arbitrary ASN queries are cached here for eight hours.')) : (language === 'zh' ? '组织与成员关系来自 CAIDA AS Rank 的推断映射，不等同于工商登记或法律实体。' : 'Organization and membership data comes from CAIDA AS Rank inference, not corporate or legal registration.')}</p>
     </section>
 
+    {queryMode === 'asn' && <ExternalAsLinks asn={activeAsn} language={language} />}
+
     {(loading || organizationLoading) && <div className="as-loading"><RefreshCw size={18} />{queryMode === 'asn' ? (language === 'zh' ? `正在查询 AS${activeAsn}…` : `Loading AS${activeAsn}…`) : (language === 'zh' ? '正在查询 CAIDA 组织映射…' : 'Searching CAIDA organization mappings…')}</div>}
     {error && <div className="as-error"><Info size={15} />{error}</div>}
 
@@ -430,7 +446,7 @@ export default function AsProfile({ language }) {
     {!loading && queryMode === 'asn' && profile && <div className="as-profile-content">
       <section className="as-identity-card">
         <div><span>AS{profile.asn}</span><h2>{profile.overview.holder || (language === 'zh' ? '未找到注册持有者名称' : 'No registered holder name')}</h2><p>{profile.overview.block?.desc || '—'} · {profile.overview.block?.resource || '—'}</p></div>
-        <div className="as-profile-actions"><button onClick={() => loadProfile(profile.asn, !STATIC_ONLY)}><RefreshCw size={13} />{language === 'zh' ? '刷新' : 'Refresh'}</button><a href={`https://stat.ripe.net/AS${profile.asn}`} target="_blank" rel="noreferrer">RIPEstat<ArrowUpRight size={13} /></a><a href={`https://www.peeringdb.com/asn/${profile.asn}`} target="_blank" rel="noreferrer">PeeringDB<ArrowUpRight size={13} /></a></div>
+        <div className="as-profile-actions"><button onClick={() => loadProfile(profile.asn, !STATIC_ONLY)}><RefreshCw size={13} />{language === 'zh' ? '刷新数据' : 'Refresh data'}</button></div>
       </section>
 
       {profile.asRank && <section className="as-rank-summary">

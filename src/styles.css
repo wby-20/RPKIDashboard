@@ -26,8 +26,8 @@ a { color: inherit; text-decoration: none; }
 .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; letter-spacing: -.01em; white-space: nowrap; }
 .brand strong { letter-spacing: .04em; }
 .brand em { font-style: normal; font-size: 8px; font-weight: 800; letter-spacing: .12em; color: #64748b; background: #eef2f6; border: 1px solid #e0e6ec; padding: 3px 5px; border-radius: 3px; margin-left: 1px; }
-.brand-mark { position: relative; width: 32px; height: 32px; display: grid; place-items: center; background: var(--navy); color: white; border-radius: 4px; overflow: hidden; }
-.brand-mark i { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #2dd4bf; right: 3px; top: 3px; border: 2px solid var(--navy); }
+.brand-mark { position: relative; width: 32px; height: 32px; display: grid; place-items: center; overflow: hidden; }
+.brand-mark img { width: 100%; height: 100%; display: block; }
 .brand-mark.small { width: 28px; height: 28px; }
 .header-inner nav { display: flex; align-items: stretch; height: 100%; gap: 30px; }
 .header-inner nav a { position: relative; display: flex; align-items: center; font-size: 12px; color: #5c6977; font-weight: 550; }
@@ -138,6 +138,11 @@ main { max-width: 1520px; margin: 0 auto; padding: 0 28px 72px; }
 .as-query-examples button:hover { border-color: #b9c8d8; background: #f1f5f9; }
 .as-query-panel > p { margin: 0 0 0 auto; max-width: 260px; display: flex; align-items: flex-start; gap: 6px; color: #7b8794; font-size: 10.5px; line-height: 1.5; }
 .as-query-panel > p svg { flex: none; margin-top: 1px; }
+.as-external-links { min-height: 48px; margin: -1px 0 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #dce3ea; background: #f8fafc; }
+.as-external-links > span { color: #657487; font-size: 10.5px; font-weight: 750; white-space: nowrap; }
+.as-external-links > div { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 5px; }
+.as-external-links a { min-height: 28px; padding: 0 7px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #d5dee7; background: white; color: #526274; font-size: 9.5px; font-weight: 700; }
+.as-external-links a:hover { border-color: #aebfd2; color: #1f3650; }
 .as-loading, .as-error { min-height: 86px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #dce3ea; background: white; color: #687787; font-size: 12.5px; }
 .as-loading svg { animation: spin .9s linear infinite; }
 .as-error { justify-content: flex-start; padding: 14px; border-left: 3px solid #dc2626; color: #a33a32; background: #fffafa; }
@@ -1022,6 +1027,8 @@ footer { max-width: 1720px; margin: 0 auto; min-height: 91px; border-top: 1px so
   .collector-map-stage, .collector-map-loading { min-height: 235px; }
   .event-summary { grid-template-columns: 1fr; }
   .as-query-panel { align-items: stretch; flex-direction: column; }
+  .as-external-links { align-items: flex-start; flex-direction: column; }
+  .as-external-links > div { justify-content: flex-start; }
   .as-query-mode { align-self: flex-start; }
   .as-query-panel form { align-items: stretch; flex-direction: column; }
   .as-query-panel form > div { grid-template-columns: 34px minmax(0, 1fr) 76px; }

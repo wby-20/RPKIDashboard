@@ -486,7 +486,7 @@ function App() {
       <header className="site-header">
         <div className="header-inner">
           <a className="brand" href="#/overview" onClick={(event) => { event.preventDefault(); navigateTo('overview'); }} aria-label={t('homeAria', 'RPKI Global Observatory home')}>
-            <span className="brand-mark"><Globe2 size={19} /><i /></span>
+            <span className="brand-mark"><img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" /></span>
             <span><strong>RPKI</strong> {language === 'zh' ? '全球观测站' : 'Global Observatory'}</span>
             <em>RESEARCH</em>
           </a>
@@ -1007,7 +1007,7 @@ function App() {
       </div>
 
       <footer>
-        <div className="footer-brand"><span className="brand-mark small"><Globe2 size={16} /><i /></span><span><b>{t('heroTitle', 'RPKI Global Observatory')}</b><small>{t('footerTagline', 'An open measurement project for routing-security research.')}</small></span></div>
+        <div className="footer-brand"><span className="brand-mark small"><img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" /></span><span><b>{t('heroTitle', 'RPKI Global Observatory')}</b><small>{t('footerTagline', 'An open measurement project for routing-security research.')}</small></span></div>
         <div className="footer-links"><button onClick={() => navigateTo('sources')}>{t('methodology', 'Methodology')}</button><button onClick={() => navigateTo('sources')}>{t('dataAccess', 'Data access')}</button><button onClick={openProjectInfo}>{t('projectInfo', 'Project information')}</button></div>
         <span className="footer-license">{language === 'zh' ? '数据来源：RIPE NCC · RouteViews · CAIDA · NIST · Cloudflare' : 'Data sources: RIPE NCC · RouteViews · CAIDA · NIST · Cloudflare'}</span>
       </footer>
