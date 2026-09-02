@@ -6,7 +6,7 @@
 
 ## 功能
 
-- CA、ROA、VRP、ASPA 和 Publication Point 快照与历史趋势
+- 有效 CA 证书、ROA、VRP、ASPA 和 Publication Point 快照与历史趋势
 - IPv4/IPv6 RPKI 覆盖和 Valid/Invalid/Not-Found 统计
 - RouteViews BGP 前缀趋势
 - RouteViews 与 RIPE RIS 收集器地图和元数据

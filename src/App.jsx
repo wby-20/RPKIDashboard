@@ -265,7 +265,7 @@ function App() {
   };
 
   const exportCsv = () => {
-    const headers = ['date', 'valid_certificates', 'valid_roas', 'ipv4_roa_prefixes', 'ipv4_/24_units', 'ipv6_roa_prefixes', 'ipv6_/48_units'];
+    const headers = ['date', 'validated_resource_certificates', 'valid_roas', 'ipv4_roa_prefixes', 'ipv4_/24_units', 'ipv6_roa_prefixes', 'ipv6_/48_units'];
     const body = visibleHistory.map((d) => [d.date, d.certs, d.roas, d.roaV4, d.roaV4Units, d.roaV6, d.roaV6Units].join(','));
     const blob = new Blob([[headers.join(','), ...body].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -301,7 +301,7 @@ function App() {
 
   const searchEntries = [
     { id: 'overview', view: 'overview', index: '00', title: t('overview', 'Overview'), subtitle: language === 'zh' ? '核心指标与研究入口' : 'Core metrics and research entry points', keywords: 'overview summary 总览 核心' },
-    { id: 'coverage', view: 'objects', index: '01', title: language === 'zh' ? 'RPKI 对象与生态' : 'RPKI Objects & Ecosystem', subtitle: language === 'zh' ? '有效证书、ROA、VRP 与 RIR 分布' : 'Certificates, ROAs, VRPs, and RIR distribution', keywords: 'ROA certificate history CA VRP ASPA RIR 历史 证书 对象 生态' },
+    { id: 'coverage', view: 'objects', index: '01', title: language === 'zh' ? 'RPKI 对象与生态' : 'RPKI Objects & Ecosystem', subtitle: language === 'zh' ? 'CA 证书、ROA、VRP 与 RIR 分布' : 'CA certificates, ROAs, VRPs, and RIR distribution', keywords: 'ROA certificate history CA VRP ASPA RIR 历史 证书 对象 生态' },
     { id: 'bgp', view: 'bgp', index: '02', title: language === 'zh' ? 'BGP 与 ROV' : 'BGP & ROV', subtitle: language === 'zh' ? '前缀数量与 RPKI-valid 比例' : 'Prefix counts and RPKI-valid ratios', keywords: 'BGP prefix IPv4 IPv6 NIST Cloudflare 前缀 覆盖' },
     { id: 'as', view: 'as', index: '03A', title: language === 'zh' ? 'AS 信息查询' : 'AS Profile', subtitle: language === 'zh' ? '路由、VRP、AS Rank 与关系邻域' : 'Routing, VRPs, AS Rank, and relationships', keywords: 'ASN autonomous system AS profile neighbour prefix VRP AS Rank CAIDA organization relationship 自治系统 组织 邻居 前缀' },
     { id: 'collectors', view: 'collectors', index: '03', title: language === 'zh' ? 'BGP 公共收集器' : 'Public BGP Collectors', subtitle: 'RouteViews · RIPE RIS', keywords: 'collector RRC RouteViews RIPE RIS peer 收集器 观测点' },
@@ -316,7 +316,7 @@ function App() {
       { key: 'overview', label: t('overview', 'Overview'), sub: language === 'zh' ? '核心指标' : 'Core metrics', icon: Activity },
     ] },
     { label: language === 'zh' ? '观测专题' : 'MEASUREMENTS', items: [
-      { key: 'objects', label: language === 'zh' ? 'RPKI 对象' : 'RPKI Objects', sub: language === 'zh' ? '证书与 ROA 历史' : 'Certificate & ROA history', icon: FileClock },
+      { key: 'objects', label: language === 'zh' ? 'RPKI 对象' : 'RPKI Objects', sub: language === 'zh' ? 'CA 证书与 ROA 历史' : 'CA certificate & ROA history', icon: FileClock },
       { key: 'bgp', label: language === 'zh' ? 'BGP 与 ROV' : 'BGP & ROV', sub: language === 'zh' ? '路由覆盖与前缀' : 'Coverage & prefixes', icon: RadioTower },
       { key: 'as', label: language === 'zh' ? 'AS 信息查询' : 'AS Profile', sub: language === 'zh' ? '路由 · AS Rank · 关系' : 'Routing · AS Rank · links', icon: CircleDot },
       { key: 'collectors', label: language === 'zh' ? 'BGP 公共收集器' : 'BGP Collectors', sub: 'RouteViews · RIPE RIS', icon: Network },
@@ -417,9 +417,9 @@ function App() {
       id: 'p1', code: 'P1', icon: ShieldCheck, tone: 'blue',
       title: language === 'zh' ? 'CA 与签名授权' : 'CA & Signed Authorization',
       subtitle: 'Certificate · ROA · ASPA',
-      description: language === 'zh' ? 'RIR/NIR/LIR 等 CA 在证书层级中授权资源，并签发 ROA、ASPA 等对象。这里的数据描述通过验证的对象，不将 CA 数量解释为组织数量。' : 'RIR, NIR, and LIR CAs authorize resources through the certificate hierarchy and issue ROA or ASPA objects. Counts describe validated objects, not organizations.',
+      description: language === 'zh' ? 'RIR/NIR/LIR 等 CA 在证书层级中授权资源，并签发 ROA、ASPA 等对象。Routinator 按有效 CA 证书计数，每个证书表示一个 CA 节点；该数值不是运营组织数量。' : 'RIR, NIR, and LIR CAs authorize resources through the certificate hierarchy and issue ROA or ASPA objects. Routinator counts valid CA certificates, each representing a CA node; this is not a count of operating organizations.',
       status: 'partial', view: 'objects', source: 'RIPE NCC public Routinator',
-      metrics: [[language === 'zh' ? '有效 CA 证书' : 'Valid CA certificates', formatNumber(totals.validCACerts)], [language === 'zh' ? '有效 ROA' : 'Valid ROAs', formatNumber(totals.validROAs)], ['ASPA', formatNumber(totals.aspasFinal)]],
+      metrics: [[language === 'zh' ? '有效 CA 证书数' : 'Valid CA certificates', formatNumber(totals.validCACerts)], [language === 'zh' ? '有效 ROA' : 'Valid ROAs', formatNumber(totals.validROAs)], ['ASPA', formatNumber(totals.aspasFinal)]],
     },
     {
       id: 'p2', code: 'P2', icon: Database, tone: 'violet',
@@ -588,17 +588,17 @@ function App() {
         </div>}
 
         {activeView === 'objects' && <div className="dashboard-view">
-        <ViewIntro eyebrow="01 · RPKI OBJECTS" title={language === 'zh' ? 'RPKI 对象与生态' : 'RPKI Objects & Ecosystem'} description={language === 'zh' ? '使用五个 RIR 信任锚的历史与当前快照，观察有效证书、ROA、VRP 及区域构成。' : 'Historical and current measurements of valid certificates, ROAs, VRPs, and regional composition under the five RIR trust anchors.'} meta={<RirSelector id="objects-rir-scope" value={rir} onChange={setRir} language={language} t={t} />} action={<button className="view-export" onClick={exportCsv}><ArrowDownToLine size={14} />{t('exportCsv', 'Export CSV')}</button>} />
+        <ViewIntro eyebrow="01 · RPKI OBJECTS" title={language === 'zh' ? 'RPKI 对象与生态' : 'RPKI Objects & Ecosystem'} description={language === 'zh' ? '使用五个 RIR 信任锚的历史与当前快照，观察有效资源证书、ROA、VRP 及区域构成。' : 'Historical and current measurements of validated resource certificates, ROAs, VRPs, and regional composition under the five RIR trust anchors.'} meta={<RirSelector id="objects-rir-scope" value={rir} onChange={setRir} language={language} t={t} />} action={<button className="view-export" onClick={exportCsv}><ArrowDownToLine size={14} />{t('exportCsv', 'Export CSV')}</button>} />
         <ViewTabs value={objectTab} onChange={setObjectTab} items={[{ value: 'growth', label: language === 'zh' ? '对象规模与 RIR' : 'Objects & RIRs' }, { value: 'address', label: language === 'zh' ? 'ROA 地址族与空间' : 'ROA Address Families' }, { value: 'aspa', label: language === 'zh' ? 'ASPA 部署' : 'ASPA Deployment' }]} />
         {objectTab === 'growth' && <>
         <div className="two-col wide-left">
           <article className="chart-card">
             <div className="card-header">
-              <div><h3>{language === 'zh' ? '有效证书与 ROA 对象长期趋势' : 'Valid certificates and ROA objects over time'}</h3><p>{language === 'zh' ? '每月最后一个可用观测值 · 五个信任锚求和' : 'Last available observation in each month · sum over five trust anchors'}</p></div>
-              <ChartActions t={t} onCopy={() => copyCitation(language === 'zh' ? '图 1：有效证书与 ROA 对象长期趋势' : 'Figure 1: Valid certificates and ROA objects')} href="https://www.ripe.net/manage-ips-and-asns/resource-management/rpki/rir-trust-anchor-statistics/" />
+              <div><h3>{language === 'zh' ? '有效资源证书与 ROA 对象长期趋势' : 'Validated resource certificates and ROA objects over time'}</h3><p>{language === 'zh' ? '每月最后一个可用观测值 · 五个信任锚求和' : 'Last available observation in each month · sum over five trust anchors'}</p></div>
+              <ChartActions t={t} onCopy={() => copyCitation(language === 'zh' ? '图 1：有效资源证书与 ROA 对象长期趋势' : 'Figure 1: validated resource certificates and ROA objects')} href="https://www.ripe.net/manage-ips-and-asns/resource-management/rpki/rir-trust-anchor-statistics/" />
             </div>
             <div className="chart-legend custom-legend">
-              <span><i style={{ background: COLORS.blue }} /> {language === 'zh' ? '有效证书' : 'Valid certificates'}</span>
+              <span><i style={{ background: COLORS.blue }} /> {language === 'zh' ? '有效资源证书' : 'Validated resource certificates'}</span>
               <span><i style={{ background: COLORS.cyan }} /> {language === 'zh' ? '有效 ROA 对象' : 'Valid ROAs'}</span>
               <span className="legend-note">{t('currentSelection', 'Current selection')}: <b>{rir === 'global' ? t('allRirs', 'All RIRs') : rirOptions.find(([v]) => v === rir)?.[1]}</b></span>
             </div>
@@ -610,7 +610,7 @@ function App() {
                   <YAxis yAxisId="certs" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
                   <YAxis yAxisId="roas" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Line yAxisId="certs" type="monotone" dataKey="certs" name={language === 'zh' ? '有效证书' : 'Valid certificates'} stroke={COLORS.blue} strokeWidth={2} dot={false} />
+                  <Line yAxisId="certs" type="monotone" dataKey="certs" name={language === 'zh' ? '有效资源证书' : 'Validated resource certificates'} stroke={COLORS.blue} strokeWidth={2} dot={false} />
                   <Line yAxisId="roas" type="monotone" dataKey="roas" name={language === 'zh' ? '有效 ROA 对象' : 'Valid ROAs'} stroke={COLORS.cyan} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -866,12 +866,12 @@ function App() {
         {activeView === 'infrastructure' && <div className="dashboard-view">
         <ViewIntro eyebrow="04 · PUBLICATION" title={t('secInfrastructure', 'Publication Infrastructure')} description={language === 'zh' ? '对象发布在哪里、有哪些逻辑发布点与仓库端点，以及每个仓库当前产生多少有效对象。' : 'Where objects are published, which repository endpoints exist, and the current validated-object counts per repository.'} meta={<span className="view-scope global"><Server size={13} />{language === 'zh' ? '公共 Routinator 快照' : 'Public Routinator snapshot'}</span>} />
         <div className="infra-summary">
-          <div><Network size={17} /><span>{t('logicalPp', 'Logical publication points')} <button className="inline-help" aria-label={language === 'zh' ? '解释 CA 与发布点数量差异' : 'Explain CA and publication-point count differences'} onClick={() => openDefinition(language === 'zh' ? '为什么 CA 证书与发布点数量不同？' : 'Why do CA and publication-point counts differ?', language === 'zh' ? '有效 CA 证书统计通过证书链验证的 CA；有效发布点统计本轮验证中具有可用发布内容的逻辑发布点。二者处于不同验证层级，不要求一一相等。缺失清单、被拒绝发布点以及信任锚结构都会造成差异。' : 'Valid CA certificates count CAs accepted through certificate-chain validation. Valid publication points count logical publication points with usable published content in this run. They are different validation layers and are not required to match; missing manifests, rejected points, and trust-anchor structure create differences.', 'RIPE NCC public Routinator tals fields')}><HelpCircle size={12} /></button></span><strong>{formatNumber(totals.validPublicationPoints)}</strong><em>{language === 'zh' ? '有效发布点' : 'valid publication points'}</em></div>
+          <div><Network size={17} /><span>{t('logicalPp', 'Logical publication points')} <button className="inline-help" aria-label={language === 'zh' ? '解释 CA 证书与发布点数量差异' : 'Explain CA-certificate and publication-point count differences'} onClick={() => openDefinition(language === 'zh' ? '为什么 CA 证书与发布点数量不同？' : 'Why do CA-certificate and publication-point counts differ?', language === 'zh' ? 'validCACerts 是本轮发现且验证有效的 CA 证书对象数；有效发布点是具有可用发布内容的逻辑发布点数。两者处于不同验证层级，不要求一一相等。Routinator 不提供独立 CA 运营组织数。' : 'validCACerts is the number of CA certificate objects found to be present and valid in this run; valid publication points count logical publication points with usable content. These are different validation layers. Routinator does not report distinct CA operating organizations.', 'RIPE NCC public Routinator /api/v1/status')}><HelpCircle size={12} /></button></span><strong>{formatNumber(totals.validPublicationPoints)}</strong><em>{language === 'zh' ? '有效发布点' : 'valid publication points'}</em></div>
           <div><Server size={17} /><span>{t('repoEndpoints', 'Repository endpoints')}</span><strong>{totals.repositoryEndpoints}</strong><em>{rrdpRepositoryCount} RRDP · {rsyncRepositoryCount} rsync</em></div>
           <div><Globe2 size={17} /><span>{t('distinctFqdn', 'Distinct server FQDNs')}</span><strong>{totals.distinctFqdns}</strong><em>{language === 'zh' ? '由仓库 URI 去重' : 'deduplicated from URIs'}</em></div>
           <div><Clock3 size={17} /><span>{language === 'zh' ? '最近一轮验证耗时' : 'Latest validation duration'} <button className="inline-help" aria-label={language === 'zh' ? '解释验证耗时口径' : 'Explain validation-duration definition'} onClick={() => openDefinition(language === 'zh' ? '验证耗时的口径' : 'Validation-duration definition', language === 'zh' ? '该数值直接取自公共 Routinator 的 lastUpdateDuration，表示该实例最近一轮完整更新的总耗时，包括仓库获取、对象解析和验证等阶段；它不是各仓库 duration 的简单求和。' : 'This is Routinator lastUpdateDuration: total elapsed time for the public instance’s latest complete update, including repository retrieval, parsing, and validation. It is not the sum of repository durations.', 'RIPE NCC public Routinator /api/v1/status')}><HelpCircle size={12} /></button></span><strong>{current.lastUpdateDuration.toFixed(2)}s</strong><em>{current.version}</em></div>
         </div>
-        <div className="definition-strip"><Info size={14} /><span>{language === 'zh' ? `当前有效 CA 为 ${formatNumber(totals.validCACerts)}，有效发布点为 ${formatNumber(totals.validPublicationPoints)}。同一快照还记录了 ${totals.rejectedPublicationPoints} 个被拒绝发布点和 ${totals.missingManifests} 个缺失清单；这些计数描述不同对象状态，不能互相直接相减解释。` : `This snapshot contains ${formatNumber(totals.validCACerts)} valid CAs, ${formatNumber(totals.validPublicationPoints)} valid publication points, ${totals.rejectedPublicationPoints} rejected points, and ${totals.missingManifests} missing manifests. These describe different validation states and should not be interpreted by direct subtraction.`}</span></div>
+        <div className="definition-strip"><Info size={14} /><span>{language === 'zh' ? `当前有效 CA 证书为 ${formatNumber(totals.validCACerts)} 个，有效发布点为 ${formatNumber(totals.validPublicationPoints)} 个。同一快照还记录了 ${totals.rejectedPublicationPoints} 个被拒绝发布点和 ${totals.missingManifests} 个缺失清单；这些计数描述不同对象状态，不能互相直接相减解释。` : `This snapshot contains ${formatNumber(totals.validCACerts)} valid CA certificates, ${formatNumber(totals.validPublicationPoints)} valid publication points, ${totals.rejectedPublicationPoints} rejected points, and ${totals.missingManifests} missing manifests. These describe different validation states and should not be interpreted by direct subtraction.`}</span></div>
         <div className="infrastructure-grid">
           <article className="chart-card repository-card">
             <div className="card-header">
@@ -879,7 +879,7 @@ function App() {
               <ChartActions t={t} onCopy={() => copyCitation(language === 'zh' ? '表 1：最终 VRP 数量最高的仓库' : 'Table 1: repositories by final VRPs')} href="https://rpki-validator.ripe.net/ui/repositories" />
             </div>
             <div className="repo-table table-scroll">
-              <div className="table-row table-head"><span>{t('endpoint', 'Endpoint')}</span><span>{language === 'zh' ? '类型' : 'Type'}</span><span>{t('finalVrps', 'Final VRPs')}</span><span>{language === 'zh' ? '有效 ROA' : 'Valid ROAs'}</span><span>{language === 'zh' ? '有效 CA' : 'Valid CAs'}</span><span>{language === 'zh' ? '发布点' : 'Pub. points'}</span></div>
+              <div className="table-row table-head"><span>{t('endpoint', 'Endpoint')}</span><span>{language === 'zh' ? '类型' : 'Type'}</span><span>{t('finalVrps', 'Final VRPs')}</span><span>{language === 'zh' ? '有效 ROA' : 'Valid ROAs'}</span><span>{language === 'zh' ? '有效 CA 证书' : 'Valid CA certificates'}</span><span>{language === 'zh' ? '发布点' : 'Pub. points'}</span></div>
               {repositoryRows.map((row, index) => (
                 <div className="table-row" key={row.uri} title={row.uri}>
                   <span className="repo-name"><b>{String(index + 1).padStart(2, '0')}</b>{row.hostname}</span>
@@ -938,7 +938,7 @@ function App() {
             <span className="snapshot-label"><Clock3 size={13} /> {formatUtc(current.observedAt)}</span>
           </div>
           <div className="regional-table table-scroll">
-            <div className="regional-row regional-head"><span>{t('registryHead', 'Registry')}</span><span>{t('validCas', 'Valid CAs')}</span><span>{t('roaObjects', 'ROA objects')}</span><span>{t('finalVrps', 'Final VRPs')}</span><span>IPv4 VRP</span><span>IPv6 VRP</span><span>ASPA</span><span>{language === 'zh' ? '发布点' : 'Pub. points'}</span><span /></div>
+            <div className="regional-row regional-head"><span>{t('registryHead', 'Registry')}</span><span>{t('validCas', 'Valid CA certificates')}</span><span>{t('roaObjects', 'ROA objects')}</span><span>{t('finalVrps', 'Final VRPs')}</span><span>IPv4 VRP</span><span>IPv6 VRP</span><span>ASPA</span><span>{language === 'zh' ? '发布点' : 'Pub. points'}</span><span /></div>
             {(rir === 'global' ? rirRows : rirRows.filter((row) => row.code === rir)).map((row) => (
               <button className={`regional-row ${rir === row.code ? 'selected' : ''}`} key={row.code} onClick={() => { setRir(row.code); setObjectTab('growth'); navigateTo('objects'); }}>
                 <span className="registry-name"><i style={{ background: row.color }} /><b>{row.name}</b><small>{row.code}</small></span>
@@ -958,7 +958,7 @@ function App() {
           <div className="source-grid" id="methodology">
             <a href="https://www.ripe.net/manage-ips-and-asns/resource-management/rpki/rir-trust-anchor-statistics/" target="_blank" rel="noreferrer" className="source-card">
               <div className="source-card-head"><span className="source-logo dark">RS</span><span className="source-type measured">{language === 'zh' ? '已使用' : 'IN USE'}</span></div>
-              <h3>RIR Trust Anchor Statistics</h3><p>{language === 'zh' ? '五个 RIR 信任锚的逐日有效证书、ROA、IPv4/IPv6 ROA 前缀及地址空间单位。' : 'Daily certificates, ROAs, IPv4/IPv6 ROA prefixes, and address-space units for all five trust anchors.'}</p>
+              <h3>RIR Trust Anchor Statistics</h3><p>{language === 'zh' ? '五个 RIR 信任锚的逐日有效资源证书、ROA、IPv4/IPv6 ROA 前缀及地址空间单位。' : 'Daily validated resource certificates, ROAs, IPv4/IPv6 ROA prefixes, and address-space units for all five trust anchors.'}</p>
               <span className="source-frequency"><RefreshCw size={12} /> {language === 'zh' ? '逐日统计' : 'daily statistics'}</span><ArrowUpRight className="source-arrow" size={15} />
             </a>
             <a href="https://rpki-validator.ripe.net/ui/metrics" target="_blank" rel="noreferrer" className="source-card">

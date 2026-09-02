@@ -620,7 +620,7 @@ function assertEqual(label, actual, expected) {
   if (actual !== expected) throw new Error(`Data invariant failed: ${label}: ${actual} !== ${expected}`);
 }
 
-assertEqual('CA total', sum('validCACerts'), output.current.totals.validCACerts);
+assertEqual('valid CA certificate total', sum('validCACerts'), output.current.totals.validCACerts);
 assertEqual('ROA total', sum('validROAs'), output.current.totals.validROAs);
 assertEqual('publication point total', sum('validPublicationPoints'), output.current.totals.validPublicationPoints);
 assertEqual('rejected publication point total', sum('rejectedPublicationPoints'), output.current.totals.rejectedPublicationPoints);
