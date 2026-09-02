@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.cache/
+dist/
+node_modules/
+__pycache__/
+*.py[cod]
+*.log
+.DS_Store
+.idea/
+.vscode/
+coverage/
+src/generated/*.tmp
+public/data/*.tmp

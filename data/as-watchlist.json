@@ -1,0 +1,4 @@
+{
+  "description": "AS profiles pre-fetched by the medium/daily scheduler; arbitrary ASN queries still fall back to RIPEstat on demand.",
+  "asns": [13335, 15169, 4134, 3356]
+}

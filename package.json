@@ -1,0 +1,32 @@
+{
+  "name": "rpki-global-observatory",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "serve": "python3 scripts/serve_dashboard.py",
+    "network:check": "python3 scripts/check_external_access.py",
+    "map:prepare": "node scripts/prepare-world-map.mjs",
+    "data:refresh": "node --env-file-if-exists=.env scripts/fetch-rpki-data.mjs",
+    "sync:fast": "python3 scripts/run_sync_scheduler.py --once --profile fast",
+    "sync:medium": "python3 scripts/run_sync_scheduler.py --once --profile medium",
+    "sync:daily": "python3 scripts/run_sync_scheduler.py --once --profile daily",
+    "sync:daemon": "python3 scripts/run_sync_scheduler.py"
+  },
+  "dependencies": {
+    "lucide-react": "1.37.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "recharts": "3.10.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.2.2"
+  }
+}
