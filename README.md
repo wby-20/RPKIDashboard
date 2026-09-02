@@ -115,8 +115,7 @@ src/       React 页面和生成数据
 - [网络连接](docs/NETWORK_ACCESS.md)
 - [同步调度](docs/SYNC_SCHEDULER.md)
 
-## License
+## 许可
 
-- Code: [MIT](LICENSE)
-- Basemap: Natural Earth 5.1.1 China POV, public domain
-- Third-party data: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- [MIT License](LICENSE)
+- [地图与第三方数据许可](THIRD_PARTY_NOTICES.md)
