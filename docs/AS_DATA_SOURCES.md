@@ -16,7 +16,7 @@
 
 当前 watchlist 为 AS13335、AS15169、AS4134 和 AS3356。打开这些示例不会产生 RIPEstat/AS Rank 浏览器请求。任意 ASN 的基础资料进入页面时并行发起 RIPEstat 与 AS Rank 请求，并在浏览器缓存 8 小时；RIS 邻居详情始终只有点击后才请求。修改 `data/as-watchlist.json` 后，下一次同步会预取新的研究对象。
 
-Watchlist 资产位于 `public/data/as-watchlist-profiles.json`，不进入主 JavaScript bundle，仅在打开 AS 页面时加载。关系接口最多预取 200 条边，前端再按路径出现次数为 provider/peer/customer 各保留最多 6 条，最终 SVG 不超过 19 个节点和 18 条边，不运行力导向算法。
+Watchlist 资产位于 `public/data/as-watchlist-profiles.json`，不进入主 JavaScript bundle，仅在打开 AS 页面时加载。完整 provider/peer/customer 数量取自 `asnDegree`；关系接口最多预取 200 条边，前端再按路径出现次数为三类关系各绘制最多 6 条。未绘制的关系仍计入图例总数。最终 SVG 不超过 19 个节点和 18 条边，不运行力导向算法。
 
 CAIDA AS Rank 的浏览器 CORS 响应在实测中不稳定，因此任意 ASN 和组织查询不再直接访问 CAIDA。开发环境由 Vite `/api/asrank` 转发；生产推荐运行 `npm run serve`，由 `scripts/serve_dashboard.py` 提供固定上游、最大 64 KB 请求体、8 小时磁盘缓存和 stale-if-error 回退。该代理不能访问任意 URL，不是通用开放代理。
 

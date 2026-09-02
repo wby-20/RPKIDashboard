@@ -75,10 +75,17 @@ const rirOptions = [
   ['RIPE', 'RIPE NCC'],
 ];
 const viewKeys = new Set(['overview', 'objects', 'bgp', 'as', 'collectors', 'infrastructure', 'retrieval', 'regional', 'sources']);
+const STATIC_ONLY = import.meta.env.VITE_STATIC_ONLY === 'true';
 const viewFromHash = () => {
   const value = window.location.hash.replace(/^#\/?/, '');
   return viewKeys.has(value) ? value : 'overview';
 };
+
+function summarizeList(values, formatter = (value) => value, limit = 2) {
+  if (!values?.length) return '—';
+  const shown = values.slice(0, limit).map(formatter).join(', ');
+  return values.length > limit ? `${shown} +${values.length - limit}` : shown;
+}
 
 function ChartTooltip({ active, payload, label, suffix = '' }) {
   if (!active || !payload?.length) return null;
@@ -239,9 +246,14 @@ function App() {
   const percentChange = (field) => previousYearHistory?.[field]
     ? `${((latestHistory[field] / previousYearHistory[field] - 1) * 100) >= 0 ? '+' : ''}${((latestHistory[field] / previousYearHistory[field] - 1) * 100).toFixed(1)}%`
     : '—';
-  const formatUtc = (value) => new Intl.DateTimeFormat(language === 'zh' ? 'zh-CN' : 'en-GB', {
-    dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Shanghai',
-  }).format(new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`));
+  const formatUtc = (value) => {
+    if (!value) return '—';
+    const timestamp = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`);
+    if (Number.isNaN(timestamp.getTime())) return '—';
+    return new Intl.DateTimeFormat(language === 'zh' ? 'zh-CN' : 'en-GB', {
+      dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Shanghai',
+    }).format(timestamp);
+  };
 
   const notify = (message) => {
     setToast(message);
@@ -280,7 +292,7 @@ function App() {
   const openDefinition = (title, definition, source) => setModal({
     title,
     eyebrow: t('definition', 'Definition'),
-    content: <><p>{definition}</p>{source && <div className="modal-source"><Database size={13} /><span><b>{t('dataSource', 'Suggested source')}</b>{source}</span></div>}</>,
+    content: <><p>{definition}</p>{source && <div className="modal-source"><Database size={13} /><span><b>{t('dataSource', 'Data source')}</b>{source}</span></div>}</>,
   });
 
   const openManifest = () => setModal({
@@ -606,9 +618,9 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={visibleHistory} margin={{ top: 10, right: 12, left: 2, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#7b8794' }} minTickGap={38} />
-                  <YAxis yAxisId="certs" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
-                  <YAxis yAxisId="roas" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 14, fill: '#7b8794' }} minTickGap={38} />
+                  <YAxis yAxisId="certs" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 14, fill: '#7b8794' }} />
+                  <YAxis yAxisId="roas" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 14, fill: '#7b8794' }} />
                   <Tooltip content={<ChartTooltip />} />
                   <Line yAxisId="certs" type="monotone" dataKey="certs" name={language === 'zh' ? '有效资源证书' : 'Validated resource certificates'} stroke={COLORS.blue} strokeWidth={2} dot={false} />
                   <Line yAxisId="roas" type="monotone" dataKey="roas" name={language === 'zh' ? '有效 ROA 对象' : 'Valid ROAs'} stroke={COLORS.cyan} strokeWidth={2} dot={false} />
@@ -646,18 +658,18 @@ function App() {
         {objectTab === 'address' && <div className="two-col equal tab-panel-grid">
           <article className="chart-card">
             <div className="card-header"><div><h3>{language === 'zh' ? 'IPv4 / IPv6 ROA 前缀数量' : 'IPv4 / IPv6 ROA Prefix Counts'}</h3><p>{language === 'zh' ? '信任锚统计中的不同地址族 ROA 前缀条目' : 'Address-family ROA prefix entries in trust-anchor statistics'}</p></div><ChartActions t={t} onCopy={() => copyCitation(language === 'zh' ? 'ROA 地址族前缀趋势' : 'ROA address-family prefix trend')} href="https://www.ripe.net/manage-ips-and-asns/resource-management/rpki/rir-trust-anchor-statistics/" /></div>
-            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={visibleHistory} margin={{ top: 14, right: 8, left: -2, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis yAxisId="v4" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis yAxisId="v6" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, paddingTop: 9 }} /><Line yAxisId="v4" type="monotone" dataKey="roaV4" name="IPv4 ROA prefixes" stroke={COLORS.blue} strokeWidth={2} dot={false} /><Line yAxisId="v6" type="monotone" dataKey="roaV6" name="IPv6 ROA prefixes" stroke={COLORS.cyan} strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
+            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={visibleHistory} margin={{ top: 14, right: 8, left: -2, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis yAxisId="v4" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis yAxisId="v6" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 15, paddingTop: 9 }} /><Line yAxisId="v4" type="monotone" dataKey="roaV4" name="IPv4 ROA prefixes" stroke={COLORS.blue} strokeWidth={2} dot={false} /><Line yAxisId="v6" type="monotone" dataKey="roaV6" name="IPv6 ROA prefixes" stroke={COLORS.cyan} strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
             <SourceLine>{language === 'zh' ? 'RIPE Trust Anchor Statistics · roa-v4 / roa-v6 · 两个地址族分别计数' : 'RIPE Trust Anchor Statistics · roa-v4 / roa-v6 · counted separately'}</SourceLine>
           </article>
           <article className="chart-card">
             <div className="card-header"><div><h3>{language === 'zh' ? 'ROA 授权地址空间单位' : 'ROA-Authorized Address-Space Units'}</h3><p>{language === 'zh' ? 'IPv4 使用 /24 等价单位；IPv6 使用 /48 等价单位' : 'IPv4 in /24 equivalents; IPv6 in /48 equivalents'}</p></div></div>
-            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={visibleHistory} margin={{ top: 14, right: 8, left: -2, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis yAxisId="v4" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis yAxisId="v6" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, paddingTop: 9 }} /><Line yAxisId="v4" type="monotone" dataKey="roaV4Units" name="IPv4 /24 units" stroke={COLORS.violet} strokeWidth={2} dot={false} /><Line yAxisId="v6" type="monotone" dataKey="roaV6Units" name="IPv6 /48 units" stroke={COLORS.amber} strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
+            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={visibleHistory} margin={{ top: 14, right: 8, left: -2, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis yAxisId="v4" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis yAxisId="v6" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 15, paddingTop: 9 }} /><Line yAxisId="v4" type="monotone" dataKey="roaV4Units" name="IPv4 /24 units" stroke={COLORS.violet} strokeWidth={2} dot={false} /><Line yAxisId="v6" type="monotone" dataKey="roaV6Units" name="IPv6 /48 units" stroke={COLORS.amber} strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
             <div className="collector-note"><Info size={14} /><span>{language === 'zh' ? 'IPv4 /24 与 IPv6 /48 是不同的归一化单位，不能相加，也不能把绝对量直接解释为 BGP 中的有效覆盖率。' : 'IPv4 /24 and IPv6 /48 equivalents are different normalization units. They must not be summed or interpreted directly as BGP valid-coverage ratios.'}</span></div>
             <SourceLine>{language === 'zh' ? 'RIPE Trust Anchor Statistics · roa-v4u / roa-v6u' : 'RIPE Trust Anchor Statistics · roa-v4u / roa-v6u'}</SourceLine>
           </article>
           <article className="chart-card full-span compact-comparison-card">
             <div className="card-header"><div><h3>{language === 'zh' ? 'ROA 中出现的唯一 ASN（按信任锚）' : 'Distinct ASNs Referenced in ROAs by Trust Anchor'}</h3><p>{language === 'zh' ? '各信任锚独立去重；同一 ASN 可能出现在多个信任锚中，因此不能求和作为全球唯一值' : 'Deduplicated within each trust anchor; values must not be summed into a global distinct count'}</p></div></div>
-            <div className="chart-wrap compact-horizontal-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={rirRoaAsnRows} layout="vertical" margin={{ top: 2, right: 24, left: 8, bottom: 0 }}><CartesianGrid horizontal={false} stroke="#edf1f5" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis type="category" dataKey="code" width={65} axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#4b5968', fontWeight: 600 }} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="roaAsn" name="Distinct ASNs in ROAs" radius={[0, 2, 2, 0]} barSize={16}>{rirRoaAsnRows.map((row) => <Cell key={row.code} fill={row.color} />)}</Bar></BarChart></ResponsiveContainer></div>
+            <div className="chart-wrap compact-horizontal-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={rirRoaAsnRows} layout="vertical" margin={{ top: 2, right: 24, left: 8, bottom: 0 }}><CartesianGrid horizontal={false} stroke="#edf1f5" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis type="category" dataKey="code" width={65} axisLine={false} tickLine={false} tick={{ fontSize: 15, fill: '#4b5968', fontWeight: 600 }} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="roaAsn" name="Distinct ASNs in ROAs" radius={[0, 2, 2, 0]} barSize={16}>{rirRoaAsnRows.map((row) => <Cell key={row.code} fill={row.color} />)}</Bar></BarChart></ResponsiveContainer></div>
             <SourceLine>{language === 'zh' ? 'RIPE Trust Anchor Statistics · roa-asn · 每个信任锚内部唯一 ASN 数' : 'RIPE Trust Anchor Statistics · roa-asn · distinct within each trust anchor'}</SourceLine>
           </article>
         </div>}
@@ -665,12 +677,12 @@ function App() {
         {objectTab === 'aspa' && <div className="two-col equal tab-panel-grid">
           <article className="chart-card">
             <div className="card-header"><div><h3>{language === 'zh' ? 'ASPA 对象数量趋势' : 'ASPA Object Count Trend'}</h3><p>{language === 'zh' ? '全球活动 ASPA 对象月末观测' : 'Global active ASPA objects, month-end observations'}</p></div><ChartActions t={t} onCopy={() => copyCitation(language === 'zh' ? 'ASPA 对象趋势' : 'ASPA object trend')} href="https://radar.cloudflare.com/routing/rpki" /></div>
-            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={aspaHistory} margin={{ top: 14, right: 10, left: 0, bottom: 0 }}><defs><linearGradient id="aspaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={COLORS.amber} stopOpacity=".22" /><stop offset="1" stopColor={COLORS.amber} stopOpacity=".02" /></linearGradient></defs><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip />} /><Area type="monotone" dataKey="count" name="ASPA objects" stroke={COLORS.amber} strokeWidth={2} fill="url(#aspaFill)" /></AreaChart></ResponsiveContainer></div>
+            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={aspaHistory} margin={{ top: 14, right: 10, left: 0, bottom: 0 }}><defs><linearGradient id="aspaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={COLORS.amber} stopOpacity=".22" /><stop offset="1" stopColor={COLORS.amber} stopOpacity=".02" /></linearGradient></defs><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip />} /><Area type="monotone" dataKey="count" name="ASPA objects" stroke={COLORS.amber} strokeWidth={2} fill="url(#aspaFill)" /></AreaChart></ResponsiveContainer></div>
             <SourceLine>{language === 'zh' ? `Cloudflare Radar ASPA API · 数据时间 ${snapshot.cloudflare?.aspaDataTime ? formatUtc(snapshot.cloudflare.aspaDataTime) : '—'}` : `Cloudflare Radar ASPA API · data ${snapshot.cloudflare?.aspaDataTime ? formatUtc(snapshot.cloudflare.aspaDataTime) : '—'}`}</SourceLine>
           </article>
           <article className="chart-card">
             <div className="card-header"><div><h3>{language === 'zh' ? '当前 ASPA 按信任锚分布' : 'Current ASPA by Trust Anchor'}</h3><p>{language === 'zh' ? '公共 Routinator 同一轮验证快照' : 'Single public Routinator validation snapshot'}</p></div></div>
-            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={rirRows} layout="vertical" margin={{ top: 12, right: 20, left: 8, bottom: 0 }}><CartesianGrid horizontal={false} stroke="#edf1f5" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis type="category" dataKey="code" width={65} axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#4b5968', fontWeight: 600 }} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="aspa" name="Final ASPA payloads" radius={[0, 2, 2, 0]} barSize={17}>{rirRows.map((row) => <Cell key={row.code} fill={row.color} />)}</Bar></BarChart></ResponsiveContainer></div>
+            <div className="chart-wrap ecosystem-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={rirRows} layout="vertical" margin={{ top: 12, right: 20, left: 8, bottom: 0 }}><CartesianGrid horizontal={false} stroke="#edf1f5" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis type="category" dataKey="code" width={65} axisLine={false} tickLine={false} tick={{ fontSize: 15, fill: '#4b5968', fontWeight: 600 }} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="aspa" name="Final ASPA payloads" radius={[0, 2, 2, 0]} barSize={17}>{rirRows.map((row) => <Cell key={row.code} fill={row.color} />)}</Bar></BarChart></ResponsiveContainer></div>
             <div className="collector-note"><Info size={14} /><span>{language === 'zh' ? 'ASPA 描述授权上游关系，不等同于路由器已经部署 ASPA 验证，也不表示路径已被接受或拒绝。' : 'ASPA expresses authorized provider relationships. It does not prove that routers enforce ASPA validation or that a path was accepted or rejected.'}</span></div>
             <SourceLine>{language === 'zh' ? 'RIPE NCC 公共 Routinator · tals.*.payload.aspas.final' : 'RIPE NCC public Routinator · final ASPA payloads per trust anchor'}</SourceLine>
           </article>
@@ -680,7 +692,7 @@ function App() {
 
         {activeView === 'bgp' && bgpTab === 'events' && <div className="dashboard-view">
           <ViewIntro eyebrow="02 · BGP / ROV" title={language === 'zh' ? 'BGP 基础数据与地址族覆盖' : 'BGP Baseline & Address-Family Coverage'} description={language === 'zh' ? '固定采集器的前缀数量、ROV 状态，以及第三方 BGP 异常候选。' : 'Fixed-collector prefix counts, ROV states, and third-party BGP anomaly candidates.'} meta={<span className="view-scope global"><Globe2 size={13} />{language === 'zh' ? '全球固定视图' : 'Global fixed view'}</span>} />
-          {cloudflareStats && <div className="bgp-summary"><div><span>{language === 'zh' ? '唯一前缀' : 'Distinct prefixes'}</span><strong>{compactNumber(cloudflareStats.distinct_prefixes)}</strong><em>{formatUtc(snapshot.cloudflare.routeStats.meta.data_time)}</em></div><div><span>IPv4 Prefix</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv4)}</strong><em>{cloudflareStats.routes_total_ipv4.toLocaleString()} routes</em></div><div><span>IPv6 Prefix</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv6)}</strong><em>{cloudflareStats.routes_total_ipv6.toLocaleString()} routes</em></div><div><span>{language === 'zh' ? '唯一起源 ASN' : 'Distinct origin ASNs'}</span><strong>{compactNumber(cloudflareStats.distinct_origins)}</strong><em>{snapshot.cloudflare.routeStats.meta.total_peers} peers</em></div></div>}
+          {cloudflareStats && <div className="bgp-summary"><div><span>{language === 'zh' ? '唯一前缀' : 'Distinct prefixes'}</span><strong>{compactNumber(cloudflareStats.distinct_prefixes)}</strong><em>{formatUtc(snapshot.cloudflare.routeStats.meta.data_time)}</em></div><div><span>{language === 'zh' ? 'IPv4 唯一前缀' : 'IPv4 prefixes'}</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv4)}</strong><em>{formatNumber(cloudflareStats.routes_total_ipv4)} {language === 'zh' ? '条路由记录' : 'route records'}</em></div><div><span>{language === 'zh' ? 'IPv6 唯一前缀' : 'IPv6 prefixes'}</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv6)}</strong><em>{formatNumber(cloudflareStats.routes_total_ipv6)} {language === 'zh' ? '条路由记录' : 'route records'}</em></div><div><span>{language === 'zh' ? '唯一起源 ASN' : 'Distinct origin ASNs'}</span><strong>{compactNumber(cloudflareStats.distinct_origins)}</strong><em>{snapshot.cloudflare.routeStats.meta.total_peers} {language === 'zh' ? '个 peer' : 'peers'}</em></div></div>}
           <ViewTabs value={bgpTab} onChange={setBgpTab} items={[{ value: 'overview', label: language === 'zh' ? '覆盖与 BGP 基线' : 'Coverage & BGP Baseline' }, { value: 'rov', label: language === 'zh' ? 'ROV 状态历史' : 'ROV State History' }, { value: 'events', label: language === 'zh' ? '第三方异常候选' : 'Third-party Anomaly Candidates' }]} />
           <div className="events-panel">
           <div className="event-disclaimer"><TriangleAlert size={16} /><span><b>{language === 'zh' ? '第三方检测候选，不是已确认攻击。' : 'Third-party detection candidates, not confirmed attacks.'}</b>{language === 'zh' ? 'Cloudflare 根据路由传播、消息和证据标签生成候选事件；MOAS、路由泄漏或 RPKI-invalid 都可能存在合法运营原因。' : 'Cloudflare produces candidates from route propagation, messages, and evidence tags. MOAS, route leaks, and RPKI-invalid states can have legitimate operational causes.'}</span></div>
@@ -691,18 +703,18 @@ function App() {
           </div>
           <div className="two-col equal event-grid">
             <article className="chart-card event-table-card">
-              <div className="card-header"><div><h3>{language === 'zh' ? '近期 Origin Hijack 候选' : 'Recent Origin-Hijack Candidates'}</h3><p>{language === 'zh' ? '按事件时间排序；保留 Cloudflare 置信度' : 'Sorted by event time; Cloudflare confidence retained'}</p></div></div>
-              <div className="event-table table-scroll"><div className="event-row hijack event-head"><span>{language === 'zh' ? '时间' : 'Time'}</span><span>Prefix</span><span>{language === 'zh' ? '疑似 Hijacker' : 'Potential hijacker'}</span><span>{language === 'zh' ? '受影响 ASN' : 'Victim ASN'}</span><span>{language === 'zh' ? '置信度' : 'Confidence'}</span></div>{anomalyData.hijacks.slice(0, 8).map((event) => <div className="event-row hijack" key={event.id}><span>{formatUtc(event.min_hijack_ts || event.max_hijack_ts)}</span><span className="mono">{event.prefixes?.slice(0, 2).join(', ') || '—'}</span><span>AS{event.hijacker_asn || '—'}</span><span>{event.victim_asns?.slice(0, 2).map((asn) => `AS${asn}`).join(', ') || '—'}</span><span><b className={`confidence ${event.confidence_score >= 8 ? 'high' : event.confidence_score >= 5 ? 'mid' : 'low'}`}>{event.confidence_score}</b></span></div>)}</div>
+              <div className="card-header"><div><h3>{language === 'zh' ? '近期 Origin Hijack 候选' : 'Recent Origin-Hijack Candidates'}</h3><p>{language === 'zh' ? `按事件时间排序 · 表中显示前 ${Math.min(8, anomalyData.hijacks.length)} 条，近 7 日总数见上方` : `Sorted by event time · first ${Math.min(8, anomalyData.hijacks.length)} shown; seven-day total above`}</p></div></div>
+              <div className="event-table table-scroll"><div className="event-row hijack event-head"><span>{language === 'zh' ? '时间' : 'Time'}</span><span>{language === 'zh' ? '前缀' : 'Prefix'}</span><span>{language === 'zh' ? '疑似 Hijacker' : 'Potential hijacker'}</span><span>{language === 'zh' ? '受影响 ASN' : 'Victim ASN'}</span><span>{language === 'zh' ? '置信度' : 'Confidence'}</span></div>{anomalyData.hijacks.slice(0, 8).map((event) => <div className="event-row hijack" key={event.id}><span>{formatUtc(event.min_hijack_ts || event.max_hijack_ts)}</span><span className="mono">{summarizeList(event.prefixes)}</span><span>AS{event.hijacker_asn || '—'}</span><span>{summarizeList(event.victim_asns, (asn) => `AS${asn}`)}</span><span><b className={`confidence ${event.confidence_score >= 8 ? 'high' : event.confidence_score >= 5 ? 'mid' : 'low'}`}>{event.confidence_score}</b></span></div>)}</div>
               <SourceLine>{language === 'zh' ? 'Cloudflare Radar hijacks/events · 第三方候选检测' : 'Cloudflare Radar hijacks/events · third-party candidate detection'}</SourceLine>
             </article>
             <article className="chart-card event-table-card">
-              <div className="card-header"><div><h3>{language === 'zh' ? '近期 Route Leak 候选' : 'Recent Route-Leak Candidates'}</h3><p>{language === 'zh' ? '当前接口主要覆盖 provider-customer-provider 型泄漏' : 'The current detector primarily covers provider-customer-provider leaks'}</p></div></div>
-              <div className="event-table table-scroll"><div className="event-row leak event-head"><span>{language === 'zh' ? '检测时间' : 'Detected'}</span><span>Leaker</span><span>Prefixes</span><span>Origins</span><span>Peers</span></div>{anomalyData.leaks.slice(0, 8).map((event) => <div className="event-row leak" key={event.id}><span>{formatUtc(event.detected_ts || event.min_ts)}</span><span>AS{event.leak_asn || '—'}</span><span>{formatNumber(event.prefix_count || 0)}</span><span>{formatNumber(event.origin_count || 0)}</span><span>{formatNumber(event.peer_count || 0)}</span></div>)}</div>
+              <div className="card-header"><div><h3>{language === 'zh' ? '近期 Route Leak 候选' : 'Recent Route-Leak Candidates'}</h3><p>{language === 'zh' ? `表中显示前 ${Math.min(8, anomalyData.leaks.length)} 条 · 当前接口主要覆盖 provider-customer-provider 型泄漏` : `First ${Math.min(8, anomalyData.leaks.length)} shown · detector primarily covers provider-customer-provider leaks`}</p></div></div>
+              <div className="event-table table-scroll"><div className="event-row leak event-head"><span>{language === 'zh' ? '检测时间' : 'Detected'}</span><span>{language === 'zh' ? '疑似泄漏 ASN' : 'Leaker'}</span><span>{language === 'zh' ? '前缀数' : 'Prefixes'}</span><span>{language === 'zh' ? '起源数' : 'Origins'}</span><span>{language === 'zh' ? '可见 Peer 数' : 'Peers'}</span></div>{anomalyData.leaks.slice(0, 8).map((event) => <div className="event-row leak" key={event.id}><span>{formatUtc(event.detected_ts || event.min_ts)}</span><span>AS{event.leak_asn || '—'}</span><span>{formatNumber(event.prefix_count || 0)}</span><span>{formatNumber(event.origin_count || 0)}</span><span>{formatNumber(event.peer_count || 0)}</span></div>)}</div>
               <SourceLine>{language === 'zh' ? 'Cloudflare Radar leaks/events · 第三方候选检测' : 'Cloudflare Radar leaks/events · third-party candidate detection'}</SourceLine>
             </article>
             <article className="chart-card full-span event-table-card">
-              <div className="card-header"><div><h3>{language === 'zh' ? '当前 RPKI-invalid MOAS 前缀' : 'Current RPKI-invalid MOAS Prefixes'}</h3><p>{language === 'zh' ? '同一前缀被多个起源 ASN 宣告，且至少一个起源为 RPKI-invalid' : 'A prefix has multiple origins and at least one origin is RPKI-invalid'}</p></div><span className="snapshot-label"><Clock3 size={13} />{anomalyData.invalidMoasMeta?.data_time ? formatUtc(anomalyData.invalidMoasMeta.data_time) : '—'}</span></div>
-              <div className="event-table moas-table table-scroll"><div className="event-row moas event-head"><span>Prefix</span><span>{language === 'zh' ? '起源与 ROV 状态（可见 peer）' : 'Origins and ROV state (visible peers)'}</span></div>{anomalyData.invalidMoas.slice(0, 12).map((item) => <div className="event-row moas" key={item.prefix}><span className="mono">{item.prefix}</span><span>{item.origins.map((origin) => <em className={`origin-state ${origin.rpki_validation.toLowerCase()}`} key={origin.origin}>AS{origin.origin} · {origin.rpki_validation} · {origin.peer_count}</em>)}</span></div>)}</div>
+              <div className="card-header"><div><h3>{language === 'zh' ? '当前 RPKI-invalid MOAS 前缀' : 'Current RPKI-invalid MOAS Prefixes'}</h3><p>{language === 'zh' ? `显示前 ${Math.min(12, anomalyData.invalidMoas.length)} / 已载入 ${anomalyData.invalidMoas.length} 个；同一前缀有多个起源且至少一个为 Invalid` : `${Math.min(12, anomalyData.invalidMoas.length)} of ${anomalyData.invalidMoas.length} loaded entries shown; multiple origins with at least one Invalid`}</p></div><span className="snapshot-label"><Clock3 size={13} />{anomalyData.invalidMoasMeta?.data_time ? formatUtc(anomalyData.invalidMoasMeta.data_time) : '—'}</span></div>
+              <div className="event-table moas-table table-scroll"><div className="event-row moas event-head"><span>{language === 'zh' ? '前缀' : 'Prefix'}</span><span>{language === 'zh' ? '起源与 ROV 状态（可见 peer）' : 'Origins and ROV state (visible peers)'}</span></div>{anomalyData.invalidMoas.slice(0, 12).map((item) => <div className="event-row moas" key={item.prefix}><span className="mono">{item.prefix}</span><span>{item.origins.map((origin) => <em className={`origin-state ${origin.rpki_validation.toLowerCase()}`} key={origin.origin}>AS{origin.origin} · {origin.rpki_validation} · {origin.peer_count}</em>)}</span></div>)}</div>
               <SourceLine>{language === 'zh' ? 'Cloudflare Radar routes/moas?invalid_only=true · MOAS 不等同于劫持' : 'Cloudflare Radar routes/moas?invalid_only=true · MOAS does not imply hijack'}</SourceLine>
             </article>
           </div>
@@ -713,9 +725,9 @@ function App() {
         <ViewIntro eyebrow="02 · BGP / ROV" title={language === 'zh' ? 'BGP 基础数据与地址族覆盖' : 'BGP Baseline & Address-Family Coverage'} description={language === 'zh' ? '固定采集器的前缀数量、Cloudflare Radar 的 RPKI-valid 比例，以及 NIST 的 ROV 状态交叉核对。' : 'Prefix counts from fixed collectors, Cloudflare Radar RPKI-valid ratios, and a NIST ROV cross-check.'} meta={<span className="view-scope global"><Globe2 size={13} />{language === 'zh' ? '全球固定视图' : 'Global fixed view'}</span>} />
         {cloudflareStats && <div className="bgp-summary">
           <div><span>{language === 'zh' ? '唯一前缀' : 'Distinct prefixes'}</span><strong>{compactNumber(cloudflareStats.distinct_prefixes)}</strong><em>{formatUtc(snapshot.cloudflare.routeStats.meta.data_time)}</em></div>
-          <div><span>IPv4 Prefix</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv4)}</strong><em>{cloudflareStats.routes_total_ipv4.toLocaleString()} routes</em></div>
-          <div><span>IPv6 Prefix</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv6)}</strong><em>{cloudflareStats.routes_total_ipv6.toLocaleString()} routes</em></div>
-          <div><span>{language === 'zh' ? '唯一起源 ASN' : 'Distinct origin ASNs'}</span><strong>{compactNumber(cloudflareStats.distinct_origins)}</strong><em>{snapshot.cloudflare.routeStats.meta.total_peers} peers</em></div>
+          <div><span>{language === 'zh' ? 'IPv4 唯一前缀' : 'IPv4 prefixes'}</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv4)}</strong><em>{formatNumber(cloudflareStats.routes_total_ipv4)} {language === 'zh' ? '条路由记录' : 'route records'}</em></div>
+          <div><span>{language === 'zh' ? 'IPv6 唯一前缀' : 'IPv6 prefixes'}</span><strong>{compactNumber(cloudflareStats.distinct_prefixes_ipv6)}</strong><em>{formatNumber(cloudflareStats.routes_total_ipv6)} {language === 'zh' ? '条路由记录' : 'route records'}</em></div>
+          <div><span>{language === 'zh' ? '唯一起源 ASN' : 'Distinct origin ASNs'}</span><strong>{compactNumber(cloudflareStats.distinct_origins)}</strong><em>{snapshot.cloudflare.routeStats.meta.total_peers} {language === 'zh' ? '个 peer' : 'peers'}</em></div>
         </div>}
         <ViewTabs value={bgpTab} onChange={setBgpTab} items={[{ value: 'overview', label: language === 'zh' ? '覆盖与 BGP 基线' : 'Coverage & BGP Baseline' }, { value: 'rov', label: language === 'zh' ? 'ROV 状态历史' : 'ROV State History' }, { value: 'events', label: language === 'zh' ? '第三方异常候选' : 'Third-party Anomaly Candidates' }]} />
         {bgpTab === 'overview' &&
@@ -729,10 +741,10 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={coverageDisplay} margin={{ top: 12, right: 10, left: -3, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 12, fill: '#7b8794' }} />
-                  <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 12, fill: '#7b8794' }} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 14, fill: '#7b8794' }} />
+                  <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 14, fill: '#7b8794' }} />
                   <Tooltip content={<ChartTooltip suffix="%" />} />
-                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 14, paddingTop: 8 }} />
                   <Line type="monotone" dataKey="ipv4" name="IPv4" stroke={COLORS.blue} strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="ipv6" name="IPv6" stroke={COLORS.cyan} strokeWidth={2} dot={false} />
                 </LineChart>
@@ -753,11 +765,11 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={routeViewsHistory} margin={{ top: 12, right: 4, left: -3, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 12, fill: '#7b8794' }} />
-                  <YAxis yAxisId="v4" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
-                  <YAxis yAxisId="v6" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 14, fill: '#7b8794' }} />
+                  <YAxis yAxisId="v4" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 14, fill: '#7b8794' }} />
+                  <YAxis yAxisId="v6" orientation="right" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 14, fill: '#7b8794' }} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 14, paddingTop: 8 }} />
                   <Line yAxisId="v4" type="monotone" dataKey="ipv4" name="IPv4 · RouteViews2" stroke={COLORS.violet} strokeWidth={2} dot={false} />
                   <Line yAxisId="v6" type="monotone" dataKey="ipv6" name="IPv6 · RouteViews6" stroke={COLORS.amber} strokeWidth={2} dot={false} />
                 </LineChart>
@@ -772,12 +784,12 @@ function App() {
         {bgpTab === 'rov' && <div className="two-col equal tab-panel-grid">
           {['v4', 'v6'].map((family) => <article className="chart-card" key={family}>
             <div className="card-header"><div><h3>{family.toUpperCase()} · Valid / Invalid / Not-Found</h3><p>{language === 'zh' ? '唯一前缀—起源 ASN 对占比 · 月末观测' : 'Share of unique prefix–origin pairs · month-end observation'}</p></div></div>
-            <div className="chart-wrap rov-history-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={nistRovHistory} margin={{ top: 12, right: 8, left: -4, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis domain={[0, 100]} axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 13, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip suffix="%" />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, paddingTop: 9 }} /><Area type="monotone" dataKey={`${family}Valid`} name="Valid" stackId={family} stroke={COLORS.green} fill={COLORS.green} fillOpacity=".22" /><Area type="monotone" dataKey={`${family}Invalid`} name="Invalid" stackId={family} stroke={COLORS.red} fill={COLORS.red} fillOpacity=".30" /><Area type="monotone" dataKey={`${family}Unknown`} name="Not-Found" stackId={family} stroke="#94a3b8" fill="#cbd5e1" fillOpacity=".58" /></AreaChart></ResponsiveContainer></div>
+            <div className="chart-wrap rov-history-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={nistRovHistory} margin={{ top: 12, right: 8, left: -4, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" /><XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={40} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis domain={[0, 100]} axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 15, fill: '#7b8794' }} /><Tooltip content={<ChartTooltip suffix="%" />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 15, paddingTop: 9 }} /><Area type="monotone" dataKey={`${family}Valid`} name="Valid" stackId={family} stroke={COLORS.green} fill={COLORS.green} fillOpacity=".22" /><Area type="monotone" dataKey={`${family}Invalid`} name="Invalid" stackId={family} stroke={COLORS.red} fill={COLORS.red} fillOpacity=".30" /><Area type="monotone" dataKey={`${family}Unknown`} name="Not-Found" stackId={family} stroke="#94a3b8" fill="#cbd5e1" fillOpacity=".58" /></AreaChart></ResponsiveContainer></div>
             <SourceLine>{language === 'zh' ? `NIST RPKI Monitor · ${family.toUpperCase()} · 原始频率六小时` : `NIST RPKI Monitor · ${family.toUpperCase()} · original six-hour cadence`}</SourceLine>
           </article>)}
           <article className="chart-card full-span compact-comparison-card">
             <div className="card-header"><div><h3>{language === 'zh' ? '当前 BGP 路由验证状态（按地址族）' : 'Current BGP Route Validation State by Address Family'}</h3><p>{language === 'zh' ? 'Cloudflare 路由快照中的绝对路由数量' : 'Absolute route counts in the Cloudflare routing snapshot'}</p></div><span className="snapshot-label"><Clock3 size={13} />{formatUtc(snapshot.cloudflare.routeStats.meta.data_time)}</span></div>
-            <div className="chart-wrap compact-horizontal-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={routeStateRows} layout="vertical" margin={{ top: 2, right: 20, left: 5, bottom: 0 }}><CartesianGrid horizontal={false} stroke="#edf1f5" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 13, fill: '#7b8794' }} /><YAxis type="category" dataKey="family" width={60} axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#4b5968', fontWeight: 600 }} /><Tooltip content={<ChartTooltip />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, paddingTop: 7 }} /><Bar dataKey="valid" name="Valid" stackId="routes" fill={COLORS.green} /><Bar dataKey="invalid" name="Invalid" stackId="routes" fill={COLORS.red} /><Bar dataKey="unknown" name="Unknown" stackId="routes" fill="#cbd5e1" /></BarChart></ResponsiveContainer></div>
+            <div className="chart-wrap compact-horizontal-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={routeStateRows} layout="vertical" margin={{ top: 2, right: 20, left: 5, bottom: 0 }}><CartesianGrid horizontal={false} stroke="#edf1f5" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 15, fill: '#7b8794' }} /><YAxis type="category" dataKey="family" width={60} axisLine={false} tickLine={false} tick={{ fontSize: 15, fill: '#4b5968', fontWeight: 600 }} /><Tooltip content={<ChartTooltip />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 15, paddingTop: 7 }} /><Bar dataKey="valid" name="Valid" stackId="routes" fill={COLORS.green} /><Bar dataKey="invalid" name="Invalid" stackId="routes" fill={COLORS.red} /><Bar dataKey="unknown" name="Unknown" stackId="routes" fill="#cbd5e1" /></BarChart></ResponsiveContainer></div>
             <div className="collector-note"><Info size={14} /><span>{language === 'zh' ? 'NIST 使用 Not-Found，Cloudflare 使用 Unknown；两者都表示当前路由没有可用于判定 Valid/Invalid 的覆盖授权，但数据源、采集器和统计对象不同，不能逐点合并。' : 'NIST uses Not-Found while Cloudflare uses Unknown. Both indicate no covering authorization for a Valid/Invalid decision, but the sources, collectors, and statistical populations differ and must not be merged point-by-point.'}</span></div>
             <SourceLine>{language === 'zh' ? `Cloudflare Radar routes/stats · ${snapshot.cloudflare.routeStats.meta.total_peers} 个 peer` : `Cloudflare Radar routes/stats · ${snapshot.cloudflare.routeStats.meta.total_peers} peers`}</SourceLine>
           </article>
@@ -786,7 +798,7 @@ function App() {
         </div>}
 
         {activeView === 'as' && <div className="dashboard-view">
-          <ViewIntro eyebrow="AS · LOOKUP" title={language === 'zh' ? 'AS 信息查询' : 'Autonomous System Profile'} description={language === 'zh' ? '按 ASN 或组织查询注册概况、RIS 路由状态、RPKI VRP 历史、AS Rank 和裁剪关系邻域。' : 'Query by ASN or organization for registration, RIS routing state, RPKI VRP history, AS Rank, and a clipped relationship neighbourhood.'} meta={<span className="view-scope global"><Database size={13} />RIPEstat · CAIDA AS Rank</span>} />
+          <ViewIntro eyebrow="AS · LOOKUP" title={language === 'zh' ? 'AS 信息查询' : 'Autonomous System Profile'} description={STATIC_ONLY ? (language === 'zh' ? '任意 ASN 可查询 RIPEstat；watchlist 另外提供预取的 AS Rank、组织映射和裁剪关系邻域。' : 'RIPEstat is available for arbitrary ASNs; watchlist entries also include pre-fetched AS Rank, organization, and relationship data.') : (language === 'zh' ? '按 ASN 或组织查询注册概况、RIS 路由状态、RPKI VRP 历史、AS Rank 和裁剪关系邻域。' : 'Query by ASN or organization for registration, RIS routing state, RPKI VRP history, AS Rank, and a clipped relationship neighbourhood.')} meta={<span className="view-scope global"><Database size={13} />RIPEstat · CAIDA AS Rank</span>} />
           <AsProfile language={language} />
         </div>}
 
@@ -824,10 +836,10 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={rirRows} margin={{ top: 18, right: 8, left: -5, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#e8edf3" strokeDasharray="3 3" />
-                  <XAxis dataKey="code" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#7b8794' }} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
+                  <XAxis dataKey="code" axisLine={false} tickLine={false} tick={{ fontSize: 14, fill: '#7b8794' }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 14, fill: '#7b8794' }} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
+                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 14, paddingTop: 10 }} />
                   <Bar dataKey="ca" name={language === 'zh' ? '有效 CA 证书' : 'Valid CA certificates'} fill={COLORS.blue} radius={[3, 3, 0, 0]} />
                   <Bar dataKey="pps" name={language === 'zh' ? '有效发布点' : 'Valid publication points'} fill={COLORS.cyan} radius={[3, 3, 0, 0]} />
                 </BarChart>
@@ -846,8 +858,8 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={rirRows} layout="vertical" margin={{ top: 2, right: 30, left: 8, bottom: 0 }}>
                   <CartesianGrid horizontal={false} stroke="#eef1f5" />
-                  <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 12, fill: '#7b8794' }} />
-                  <YAxis type="category" dataKey="code" axisLine={false} tickLine={false} width={65} tick={{ fontSize: 12, fill: '#4b5968', fontWeight: 600 }} />
+                  <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactNumber} tick={{ fontSize: 14, fill: '#7b8794' }} />
+                  <YAxis type="category" dataKey="code" axisLine={false} tickLine={false} width={65} tick={{ fontSize: 14, fill: '#4b5968', fontWeight: 600 }} />
                   <Tooltip content={<ChartTooltip />} />
                   <Bar dataKey="vrp" name={t('finalVrps', 'Final VRPs')} radius={[0, 4, 4, 0]} barSize={15}>{rirRows.map((row) => <Cell key={row.code} fill={row.color} />)}</Bar>
                 </BarChart>
@@ -875,7 +887,7 @@ function App() {
         <div className="infrastructure-grid">
           <article className="chart-card repository-card">
             <div className="card-header">
-              <div><h3>{language === 'zh' ? '最终 VRP 数量最高的仓库' : 'Repositories with the most final VRPs'}</h3><p>{language === 'zh' ? '按仓库通知 URI 统计 · 非下载对象总量' : 'Grouped by repository notification URI · not total downloaded objects'}</p></div>
+              <div><h3>{language === 'zh' ? '最终 VRP 数量最高的仓库' : 'Repositories with the most final VRPs'}</h3><p>{language === 'zh' ? `按仓库通知 URI 排序 · 显示前 ${repositoryRows.length} / 共 ${totals.repositoryEndpoints} 个端点；不是下载对象总量` : `Ranked by notification URI · ${repositoryRows.length} of ${totals.repositoryEndpoints} endpoints shown; not downloaded-object totals`}</p></div>
               <ChartActions t={t} onCopy={() => copyCitation(language === 'zh' ? '表 1：最终 VRP 数量最高的仓库' : 'Table 1: repositories by final VRPs')} href="https://rpki-validator.ripe.net/ui/repositories" />
             </div>
             <div className="repo-table table-scroll">
@@ -900,7 +912,7 @@ function App() {
         <div className="two-col wide-left">
           <article className="chart-card">
             <div className="card-header">
-              <div><h3>{language === 'zh' ? '本轮耗时最高的仓库获取操作' : 'Slowest repository retrievals in this run'}</h3><p>{language === 'zh' ? 'RRDP 与 rsync 原始状态记录 · 按持续时间排序' : 'Raw RRDP and rsync status records ranked by duration'}</p></div>
+              <div><h3>{language === 'zh' ? '本轮耗时最高的仓库获取操作' : 'Slowest repository retrievals in this run'}</h3><p>{language === 'zh' ? `RRDP 与 rsync 原始记录 · 显示最慢 ${slowRetrievals.length} / 共 ${totals.rrdpAttempts + totals.rsyncAttempts} 次尝试` : `Raw RRDP and rsync records · ${slowRetrievals.length} slowest of ${totals.rrdpAttempts + totals.rsyncAttempts} attempts shown`}</p></div>
               <div className="headline-stat"><span>{language === 'zh' ? '整轮验证' : 'full validation'}</span><b>{current.lastUpdateDuration.toFixed(2)}s</b></div>
             </div>
             <div className="retrieval-table table-scroll">
@@ -989,7 +1001,7 @@ function App() {
             <a href="https://asrank.caida.org/doc" target="_blank" rel="noreferrer" className="source-card">
               <div className="source-card-head"><span className="source-logo violet">CA</span><span className="source-type measured">{language === 'zh' ? '已使用' : 'IN USE'}</span></div>
               <h3>CAIDA AS Rank API</h3><p>{language === 'zh' ? 'Customer-cone 排名、AS-to-Organization 映射，以及 provider/peer/customer 推断关系。' : 'Customer-cone ranking, AS-to-Organization mapping, and inferred provider/peer/customer relationships.'}</p>
-              <span className="source-frequency"><RefreshCw size={12} /> {language === 'zh' ? 'watchlist 每日；组织与任意 ASN 按需' : 'daily watchlist; organizations and arbitrary ASNs on demand'}</span><ArrowUpRight className="source-arrow" size={15} />
+              <span className="source-frequency"><RefreshCw size={12} /> {STATIC_ONLY ? (language === 'zh' ? 'watchlist 每日预取' : 'daily watchlist prefetch') : (language === 'zh' ? 'watchlist 每日；组织与任意 ASN 按需' : 'daily watchlist; organizations and arbitrary ASNs on demand')}</span><ArrowUpRight className="source-arrow" size={15} />
             </a>
             <a href="https://rpki-monitor.antd.nist.gov/Methodology" target="_blank" rel="noreferrer" className="source-card">
               <div className="source-card-head"><span className="source-logo red">NI</span><span className="source-type measured">{language === 'zh' ? '已使用' : 'IN USE'}</span></div>

@@ -119,3 +119,13 @@ src/       React 页面和生成数据
 
 - [MIT License](LICENSE)
 - [地图与第三方数据许可](THIRD_PARTY_NOTICES.md)
+
+## 使用的 API
+
+- [RIPE NCC Public Routinator](https://rpki-validator.ripe.net/)
+- [RIPE NCC RIR Trust Anchor Statistics](https://www.ripe.net/manage-ips-and-asns/resource-management/rpki/rir-trust-anchor-statistics/)
+- [RIPEstat Data API](https://stat.ripe.net/docs/data-api/)
+- [RouteViews API](https://api.routeviews.org/docs/)
+- [NIST RPKI Monitor](https://rpki-monitor.antd.nist.gov/)
+- [Cloudflare Radar API](https://developers.cloudflare.com/api/resources/radar/)
+- [CAIDA AS Rank API](https://asrank.caida.org/doc)
