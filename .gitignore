@@ -13,3 +13,4 @@ __pycache__/
 coverage/
 src/generated/*.tmp
 public/data/*.tmp
+public/data/deployment-state.json

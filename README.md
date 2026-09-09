@@ -46,9 +46,9 @@ npm run serve
 
 `.github/workflows/pages.yml` 负责构建和部署 GitHub Pages：
 
-- 推送到 `main` 时部署当前数据
-- 每天 4 次定时刷新和部署
-- 支持在 Actions 页面手动运行
+- 代码推送到 `main` 时部署；仅修改文档不部署
+- 每天 4 次采集，数据有变化时构建和发布
+- Actions 支持手动更新和强制发布
 
 Cloudflare Radar 更新需要在仓库 Actions Secrets 中配置：
 

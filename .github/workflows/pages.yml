@@ -1,9 +1,19 @@
 name: Deploy GitHub Pages
+run-name: ${{ github.event_name == 'push' && '代码部署' || github.event_name == 'schedule' && '定时数据更新' || '手动数据更新' }} · ${{ github.ref_name }}
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: '数据未变化时仍强制发布'
+        type: boolean
+        default: false
   schedule:
     # Four snapshots per day; avoid the top of the hour where Actions is busiest.
     - cron: '23 1,7,13,19 * * *'
@@ -20,6 +30,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -29,9 +41,6 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Restore API response cache
         uses: actions/cache/restore@v4
@@ -43,6 +52,24 @@ jobs:
           restore-keys: |
             rpki-sources-v2-${{ runner.os }}-
             rpki-api-${{ runner.os }}-
+
+      - name: Restore latest successful dataset
+        run: |
+          node --input-type=module <<'JS'
+          import { readFile, writeFile } from 'node:fs/promises';
+          try {
+            const saved = JSON.parse(await readFile('.cache/snapshots/pages-data.json', 'utf8'));
+            const bundled = JSON.parse(await readFile('src/generated/rpki-data.json', 'utf8'));
+            const watchlist = JSON.parse(await readFile('data/as-watchlist.json', 'utf8')).asns;
+            if (saved.dashboard.provenance.generatedAt > bundled.provenance.generatedAt
+                && JSON.stringify(saved.profiles.watchlist) === JSON.stringify(watchlist)) {
+              await writeFile('src/generated/rpki-data.json', JSON.stringify(saved.dashboard));
+              await writeFile('public/data/as-watchlist-profiles.json', JSON.stringify(saved.profiles));
+            }
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+          }
+          JS
 
       - name: Refresh scheduled snapshot
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -60,21 +87,37 @@ jobs:
             .cache/snapshots
           key: rpki-sources-v2-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
+      - name: Check for publishable changes
+        id: changes
+        env:
+          PAGES_URL: https://wby-20.github.io/RPKIDashboard
+          FORCE_DEPLOY: ${{ inputs.force_deploy || false }}
+        run: node scripts/pages-change-check.mjs
+
+      - name: Install dependencies
+        if: steps.changes.outputs.changed == 'true'
+        run: npm ci
+
       - name: Configure Pages
+        if: steps.changes.outputs.changed == 'true'
         uses: actions/configure-pages@v5
 
       - name: Build static Pages site
+        if: steps.changes.outputs.changed == 'true'
         env:
           VITE_STATIC_ONLY: 'true'
         run: npm run build -- --base=./
 
       - name: Upload Pages artifact
+        if: steps.changes.outputs.changed == 'true'
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist
+          retention-days: 1
 
   deploy:
     needs: build
+    if: needs.build.outputs.changed == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
