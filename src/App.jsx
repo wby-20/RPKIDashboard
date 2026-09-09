@@ -533,6 +533,7 @@ function App() {
         </aside>
 
       <main id="top" className="dashboard-main">
+        {(snapshot.provenance.sourceFailures?.length > 0 || snapshot.provenance.asSourceFailures?.length > 0) && <div className="collector-note" role="status"><Info size={16} /><span>{language === 'zh' ? '本轮部分接口未能刷新，已保留可用历史数据；各数据源原始时间保持不变，AS 详情中列出具体状态。' : 'Some sources could not refresh. Available historical data and original timestamps are retained; AS profiles show source status.'}</span></div>}
         {activeView === 'overview' && <div className="dashboard-view overview-view">
         <section className="hero">
           <div>

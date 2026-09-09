@@ -35,3 +35,6 @@ jobs:
 
       - name: Build production site
         run: npm run build
+
+      - name: Test source fallback
+        run: node --test scripts/source-fallback.test.mjs

@@ -449,8 +449,9 @@ export default function AsProfile({ language }) {
     </section>}
 
     {!loading && queryMode === 'asn' && profile && <div className="as-profile-content">
+      {Object.values(profile.sourceStatus || {}).some((meta) => ['stale', 'unavailable'].includes(meta.state)) && <div className="as-card-note" role="status"><Info size={16} /><div>{language === 'zh' ? '部分数据未能刷新：' : 'Some sources could not refresh:'}{Object.entries(profile.sourceStatus).filter(([, meta]) => ['stale', 'unavailable'].includes(meta.state)).map(([source, meta]) => <p key={source}>{({ overview: 'RIPEstat AS Overview', routing: 'RIPEstat Routing Status', rpkiV4: 'IPv4 VRP', rpkiV6: 'IPv6 VRP', asRank: 'CAIDA AS Rank' })[source]} · {meta.state === 'stale' ? (language === 'zh' ? `沿用旧数据，上次成功 ${formatTime(meta.lastSuccessAt)}` : `Retained data, last success ${formatTime(meta.lastSuccessAt)}`) : (language === 'zh' ? '暂不可用' : 'Unavailable')}</p>)}</div></div>}
       <section className="as-identity-card">
-        <div><span>AS{profile.asn}</span><h2>{profile.overview.holder || (language === 'zh' ? '未找到注册持有者名称' : 'No registered holder name')}</h2><p>{profile.overview.block?.desc || '—'} · {profile.overview.block?.resource || '—'}</p></div>
+        <div><span>AS{profile.asn}</span><h2>{profile.overview?.holder || (language === 'zh' ? '注册持有者名称暂不可用' : 'Registered holder name unavailable')}</h2><p>{profile.overview?.block?.desc || '—'} · {profile.overview?.block?.resource || '—'}</p></div>
         <div className="as-profile-actions"><button onClick={() => loadProfile(profile.asn, !STATIC_ONLY)}><RefreshCw size={13} />{language === 'zh' ? '刷新数据' : 'Refresh data'}</button></div>
       </section>
 
@@ -462,11 +463,11 @@ export default function AsProfile({ language }) {
       {!profile.asRank && <section className={`as-rank-unavailable ${profile.asRankState || 'loading'}`}><RefreshCw size={18} /><div><b>{profile.asRankState === 'loading' ? (language === 'zh' ? 'CAIDA AS Rank 正在独立加载' : 'CAIDA AS Rank is loading separately') : (language === 'zh' ? 'CAIDA AS Rank 暂未返回' : 'CAIDA AS Rank has not returned')}</b><p>{profile.asRankError || (language === 'zh' ? '这不会阻塞 RIPEstat 身份和 RPKI 历史。' : 'This does not block RIPEstat identity or RPKI history.')}</p></div>{profile.asRankState === 'unavailable' && !STATIC_ONLY && <button onClick={retryAsRank}><RefreshCw size={13} />{language === 'zh' ? '重试 AS Rank' : 'Retry AS Rank'}</button>}</section>}
 
       <section className="as-metric-strip">
-        <div><span>{language === 'zh' ? 'RIS 可见起源公告' : 'RIS-visible origin'}</span><strong className={profile.overview.announced ? 'positive' : 'neutral'}>{profile.overview.announced ? (language === 'zh' ? '有' : 'Yes') : (language === 'zh' ? '未观测' : 'Not observed')}</strong></div>
+        <div><span>{language === 'zh' ? 'RIS 可见起源公告' : 'RIS-visible origin'}</span><strong className={profile.overview?.announced ? 'positive' : 'neutral'}>{!profile.overview ? '—' : profile.overview.announced ? (language === 'zh' ? '有' : 'Yes') : (language === 'zh' ? '未观测' : 'Not observed')}</strong></div>
         <div><span>{language === 'zh' ? 'IPv4 公告前缀' : 'IPv4 prefixes'}</span><strong>{profile.routing ? formatNumber(profile.routing.announced_space?.v4?.prefixes || 0) : '—'}</strong></div>
         <div><span>{language === 'zh' ? 'IPv6 公告前缀' : 'IPv6 prefixes'}</span><strong>{profile.routing ? formatNumber(profile.routing.announced_space?.v6?.prefixes || 0) : '—'}</strong></div>
         <div><span>{language === 'zh' ? 'RIS 观测邻居' : 'RIS-observed neighbours'}</span><strong>{profile.routing ? formatNumber(profile.routing.observed_neighbours || 0) : '—'}</strong></div>
-        <div><span>VRP IPv4 / IPv6</span><strong>{latestRpki ? `${formatNumber(latestRpki.ipv4 || 0)} / ${formatNumber(latestRpki.ipv6 || 0)}` : '—'}</strong></div>
+        <div><span>VRP IPv4 / IPv6</span><strong>{latestRpki ? `${latestRpki.ipv4 == null ? '—' : formatNumber(latestRpki.ipv4)} / ${latestRpki.ipv6 == null ? '—' : formatNumber(latestRpki.ipv6)}` : '—'}</strong></div>
       </section>
 
       <div className="as-two-column">

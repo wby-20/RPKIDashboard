@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
+import { loadSource } from './source-fallback.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -13,6 +14,8 @@ const CACHE_DIRECTORY_URL = new URL('../.cache/api/', import.meta.url);
 const AS_WATCHLIST_URL = new URL('../data/as-watchlist.json', import.meta.url);
 const AS_PROFILES_PUBLIC_URL = new URL('../public/data/as-watchlist-profiles.json', import.meta.url);
 const AS_PROFILES_TEMP_URL = new URL('../public/data/as-watchlist-profiles.json.tmp', import.meta.url);
+const LAST_AS_PROFILES_URL = new URL('../.cache/snapshots/as-profiles.json', import.meta.url);
+const sourceStates = new Map();
 const profileArgument = process.argv.find((argument) => argument.startsWith('--profile='));
 const syncProfile = profileArgument?.split('=')[1] || 'full';
 const validProfiles = new Set(['fast', 'medium', 'daily', 'full']);
@@ -31,6 +34,17 @@ try {
   previousOutput = JSON.parse(await readFile(GENERATED_URL, 'utf8'));
 } catch {
   // A clean checkout can bootstrap the full history without a previous snapshot.
+}
+let previousProfiles = {};
+let previousProfilesTime = null;
+for (const file of [LAST_AS_PROFILES_URL, AS_PROFILES_PUBLIC_URL]) {
+  try {
+    const saved = JSON.parse(await readFile(file, 'utf8'));
+    if (!saved.byAsn) continue;
+    previousProfiles = saved.byAsn;
+    previousProfilesTime = saved.generatedAt;
+    break;
+  } catch { /* use the bundled snapshot if no successful cache exists */ }
 }
 
 const asWatchlist = JSON.parse(await readFile(AS_WATCHLIST_URL, 'utf8')).asns;
@@ -98,7 +112,10 @@ async function fetchText(url, bearerToken) {
   const group = sourceGroup(url);
   if (!shouldForceSource(group)) {
     const cached = await readCachedResponse(url, cacheMaxAge(group));
-    if (cached != null) return cached;
+    if (cached != null) {
+      sourceStates.set(url, { state: 'cached', lastSuccessAt: (await stat(cacheUrlFor(url))).mtime.toISOString() });
+      return cached;
+    }
   }
   const args = [
     '-L', '--retry', '5', '--retry-all-errors', '--retry-delay', '1', '--max-time', '45',
@@ -108,12 +125,13 @@ async function fetchText(url, bearerToken) {
   args.push(url);
   try {
     const { stdout } = await execFileAsync('curl', args, { maxBuffer: 8 * 1024 * 1024 });
+    validateResponse(url, stdout);
     cacheCounters.network += 1;
     await writeCachedResponse(url, stdout);
+    sourceStates.set(url, { state: 'fresh', lastSuccessAt: new Date().toISOString() });
     return stdout;
   } catch (error) {
-    if (bearerToken) throw new Error(`Authenticated request failed for ${new URL(url).pathname} (curl exit ${error.code})`);
-    throw error;
+    return staleResponse(url, url, error);
   }
 }
 
@@ -122,17 +140,57 @@ async function fetchPostText(url, body) {
   const group = sourceGroup(url);
   if (!shouldForceSource(group)) {
     const cached = await readCachedResponse(cacheKey, cacheMaxAge(group));
-    if (cached != null) return cached;
+    if (cached != null) {
+      sourceStates.set(cacheKey, { state: 'cached', lastSuccessAt: (await stat(cacheUrlFor(cacheKey))).mtime.toISOString() });
+      return cached;
+    }
   }
   const args = [
     '-L', '--retry', '5', '--retry-all-errors', '--retry-delay', '1', '--max-time', '45',
     '-A', 'RPKI-Global-Observatory/0.1', '-sSf', '-X', 'POST',
     '-H', 'Content-Type: application/json', '--data-binary', body, url,
   ];
-  const { stdout } = await execFileAsync('curl', args, { maxBuffer: 8 * 1024 * 1024 });
-  cacheCounters.network += 1;
-  await writeCachedResponse(cacheKey, stdout);
-  return stdout;
+  try {
+    const { stdout } = await execFileAsync('curl', args, { maxBuffer: 8 * 1024 * 1024 });
+    validateResponse(url, stdout);
+    cacheCounters.network += 1;
+    await writeCachedResponse(cacheKey, stdout);
+    sourceStates.set(cacheKey, { state: 'fresh', lastSuccessAt: new Date().toISOString() });
+    return stdout;
+  } catch (error) {
+    return staleResponse(cacheKey, url, error);
+  }
+}
+
+function validateResponse(url, text) {
+  if (!text.trim()) throw new Error('Empty response');
+  if (url.includes(HISTORY_BASE)) {
+    if (!parseHistory(text).size) throw new Error('Invalid history response');
+    return;
+  }
+  if (url.includes('rpki-monitor.antd.nist.gov')) return; // HTML/CSV source
+  const payload = JSON.parse(text);
+  if (payload.success === false || payload.errors?.length || (payload.status && payload.status !== 'ok')) {
+    throw new Error('Upstream returned an error response');
+  }
+  if (url.includes('api.asrank.caida.org') && !payload.data?.asn) throw new Error('AS Rank profile missing');
+  if (url.includes('stat.ripe.net/data/') && !payload.data) throw new Error('RIPEstat data missing');
+  if (url.includes('/routing-status/') && !payload.data?.announced_space) throw new Error('Routing state missing');
+  if (url.includes('/rpki-history/') && !Array.isArray(payload.data?.timeseries)) throw new Error('VRP history missing');
+  if (url.includes('/as-overview/') && Number(String(payload.data?.resource).replace(/^AS/i, '')) !== Number(new URL(url).searchParams.get('resource').replace(/^AS/i, ''))) throw new Error('AS identity mismatch');
+}
+
+async function staleResponse(key, url, error) {
+  const message = `Source request failed: ${url} (${error.code ? `curl ${error.code}` : 'invalid response'})`;
+  const previous = await readCachedResponse(key, Infinity);
+  if (previous != null) {
+    validateResponse(url, previous);
+    const meta = { state: 'stale', lastSuccessAt: (await stat(cacheUrlFor(key))).mtime.toISOString(), attemptedAt: new Date().toISOString(), error: message };
+    sourceStates.set(key, meta);
+    console.warn(`${message}; retained response from ${meta.lastSuccessAt}`);
+    return previous;
+  }
+  throw new Error(message);
 }
 
 let routeViewsRequestQueue = Promise.resolve();
@@ -211,28 +269,49 @@ function mergeAsRpkiHistory(ipv4Rows, ipv6Rows) {
 async function fetchAsProfile(asn) {
   const base = 'https://stat.ripe.net/data';
   const asRankQuery = `query { asn(asn: "${asn}") { date asn asnName rank source cliqueMember seen country { iso } organization { orgId orgName rank country { iso } } cone { numberAsns numberPrefixes numberAddresses } asnDegree { total customer peer provider } asnLinks(first: 200, sort: "-numberPaths") { totalCount edges { node { relationship numberPaths rank asn0 { asn asnName rank } asn1 { asn asnName rank } } } } } }`;
-  const [overviewResponse, routingResponse, rpkiV4Response, rpkiV6Response, asRankResponse] = await Promise.all([
-    fetchText(`${base}/as-overview/data.json?resource=AS${asn}`),
-    fetchText(`${base}/routing-status/data.json?resource=AS${asn}`),
-    fetchText(`${base}/rpki-history/data.json?resource=AS${asn}&family=4&resolution=m`),
-    fetchText(`${base}/rpki-history/data.json?resource=AS${asn}&family=6&resolution=m`),
-    fetchPostText('https://api.asrank.caida.org/v2/graphql', JSON.stringify({ query: asRankQuery })),
-  ]);
-  const overview = JSON.parse(overviewResponse);
-  const routing = JSON.parse(routingResponse);
-  const rpkiV4 = JSON.parse(rpkiV4Response);
-  const rpkiV6 = JSON.parse(rpkiV6Response);
-  const asRank = JSON.parse(asRankResponse);
-  for (const [name, response] of Object.entries({ overview, routing, rpkiV4, rpkiV6 })) {
-    if (response.status !== 'ok' || !response.data) throw new Error(`Invalid RIPEstat AS profile response: AS${asn} ${name}`);
-  }
-  if (asRank.errors?.length || !asRank.data?.asn) throw new Error(`Invalid CAIDA AS Rank response: AS${asn}`);
+  const previous = previousProfiles[String(asn)] || {};
+  const asRankUrl = 'https://api.asrank.caida.org/v2/graphql';
+  const body = JSON.stringify({ query: asRankQuery });
+  const historyFallback = (family) => previous.rpkiHistory && previous.sourceStatus?.[family === 'ipv4' ? 'rpkiV4' : 'rpkiV6']?.state !== 'unavailable'
+    ? { timeseries: previous.rpkiHistory.filter((row) => row[family] != null).map((row) => ({ time: row.date, rpki: { vrp_count: row[family] } })) }
+    : null;
+  const definitions = [
+    ['overview', `${base}/as-overview/data.json?resource=AS${asn}`, previous.overview],
+    ['routing', `${base}/routing-status/data.json?resource=AS${asn}`, previous.routing],
+    ['rpkiV4', `${base}/rpki-history/data.json?resource=AS${asn}&family=4&resolution=m`, historyFallback('ipv4')],
+    ['rpkiV6', `${base}/rpki-history/data.json?resource=AS${asn}&family=6&resolution=m`, historyFallback('ipv6')],
+    ['asRank', asRankUrl, previous.asRank],
+  ];
+  const results = Object.fromEntries(await Promise.all(definitions.map(async ([name, url, previousValue]) => {
+    const result = await loadSource({
+      previous: previousValue,
+      previousMeta: previous.sourceStatus?.[name],
+      fallbackTime: previousProfilesTime,
+      load: async () => {
+        const raw = name === 'asRank' ? await fetchPostText(url, body) : await fetchText(url);
+        const payload = JSON.parse(raw);
+        const value = name === 'asRank' ? payload.data.asn : payload.data;
+        if (name === 'overview' && Number(String(value.resource).replace(/^AS/i, '')) !== asn) throw new Error('AS identity mismatch');
+        if (name === 'routing' && !value.announced_space) throw new Error('Routing state missing');
+        if (name.startsWith('rpki') && !Array.isArray(value.timeseries)) throw new Error('VRP history missing');
+        return { value, meta: sourceStates.get(name === 'asRank' ? `${url}\n${body}` : url) };
+      },
+    });
+    if (['stale', 'unavailable'].includes(result.meta.state)) console.warn(`AS${asn} ${name}: ${result.meta.state}`);
+    return [name, result];
+  })));
+  const sourceStatus = Object.fromEntries(Object.entries(results).map(([name, result]) => [name, result.meta]));
   return {
     asn,
-    overview: overview.data,
-    routing: routing.data,
-    rpkiHistory: mergeAsRpkiHistory(rpkiV4.data.timeseries, rpkiV6.data.timeseries),
-    asRank: asRank.data.asn,
+    overview: results.overview.value,
+    routing: results.routing.value,
+    routingState: results.routing.value ? 'ready' : 'unavailable',
+    routingError: results.routing.value ? null : 'Scheduled source unavailable',
+    rpkiHistory: mergeAsRpkiHistory(results.rpkiV4.value?.timeseries, results.rpkiV6.value?.timeseries),
+    asRank: results.asRank.value,
+    asRankState: results.asRank.value ? 'ready' : 'unavailable',
+    asRankError: results.asRank.value ? null : 'Scheduled source unavailable',
+    sourceStatus,
   };
 }
 
@@ -538,6 +617,8 @@ const output = {
     generatedAt: new Date().toISOString(),
     syncProfile,
     cache: { ...cacheCounters },
+    sourceFailures: [...sourceStates.entries()].filter(([, meta]) => meta.state === 'stale').map(([key, meta]) => ({ source: key.split('\n')[0], ...meta })),
+    asSourceFailures: Object.values(asProfiles).flatMap((profile) => Object.entries(profile.sourceStatus).filter(([, meta]) => ['stale', 'unavailable'].includes(meta.state)).map(([source, meta]) => ({ asn: profile.asn, source, ...meta }))),
     currentSource: STATUS_URL,
     historySource: `${HISTORY_BASE}/{rir}.tal.txt`,
     historyDescription: 'RIPE NCC RIR Trust Anchor Statistics; monthly points are the last available daily observation in each calendar month.',
@@ -669,4 +750,9 @@ await writeFile(AS_PROFILES_TEMP_URL, `${JSON.stringify({ generatedAt: output.pr
 await rename(AS_PROFILES_TEMP_URL, AS_PROFILES_PUBLIC_URL);
 await writeFile(GENERATED_TEMP_URL, `${JSON.stringify(output, null, 2)}\n`);
 await rename(GENERATED_TEMP_URL, GENERATED_URL);
+await mkdir(new URL('../.cache/snapshots/', import.meta.url), { recursive: true });
+await writeFile(new URL('./as-profiles.json.tmp', LAST_AS_PROFILES_URL), JSON.stringify({ generatedAt: output.provenance.generatedAt, byAsn: asProfiles }));
+await rename(new URL('./as-profiles.json.tmp', LAST_AS_PROFILES_URL), LAST_AS_PROFILES_URL);
+const failures = output.provenance.sourceFailures.length + output.provenance.asSourceFailures.length;
+if (failures) console.warn(`::warning::Snapshot refreshed with ${failures} source fallback/unavailable records; see data provenance for retained timestamps.`);
 console.log(`Wrote ${output.history.global.length} RPKI, ${output.bgp.routeViews.length} BGP, ${output.bgp.nistRov.length} NIST ROV, and ${output.cloudflare?.coverage.length || 0} Cloudflare coverage observations; collector inventories: RouteViews ${routeViewsCollectors.length}, RIPE RIS ${risCollectors.length}; profile ${syncProfile}, cache ${cacheCounters.hits} hit(s), ${cacheCounters.network} network request(s).`);
